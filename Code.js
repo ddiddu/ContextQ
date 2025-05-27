@@ -45,6 +45,13 @@ function getSlideContent() {
   return `Slide 6:\n${text}`;
 }
 
+function getApiKey() {
+  const file = DriveApp.getFileById('YOUR_FILE_ID'); // Replace with the file ID of your config.json in Google Drive
+  const content = file.getBlob().getDataAsString();
+  const config = JSON.parse(content);
+  return config.OPENAI_API_KEY;
+}
+
 function generateComments() {
   const content = getSlideContent();
 
@@ -66,7 +73,7 @@ function generateComments() {
     method: 'post',
     contentType: 'application/json',
     headers: {
-      'Authorization': 'Bearer REMOVED'
+      'Authorization': `Bearer ${getApiKey()}`
     },
     payload: JSON.stringify(payload),
     muteHttpExceptions: true

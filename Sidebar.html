@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <span class="material-icons">info</span>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background: #f4f6f8;
+        margin: 0;
+        padding: 10px;
+        color: #333;
+      }
+      .tab-button {
+        background-color: #ffffff;
+        border-radius: 8px 8px 0 0;
+        border: 1px solid #ddd;
+        transition: background 0.2s ease;
+      }
+      .tab-button.active {
+        background-color: #e0f2fe;
+        font-weight: 600;
+      }
+      .card {
+        border-radius: 12px;
+        border: 1px solid #ccc;
+        padding: 12px;
+        background-color: #ffffff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      }
+      .tab-content {
+        border: 1px solid #ccc;
+        padding: 10px;
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .card:hover {
+        background-color: #e6f0ff;
+      }
+      .card-text {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      .card-feedback {
+        color: #555;
+      }
+      input, textarea {
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        padding: 8px;
+        font-size: 14px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      button {
+        background-color: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 15px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-top: 10px;
+        width: 100%;
+      }
+      button:hover {
+        background-color: #2563eb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tab-buttons">
+      <div class="tab-button active" onclick="showTab('context')">Context</div>
+      <div class="tab-button" onclick="showTab('questions')">Questions</div>
+    </div>
+
+    <div id="context" class="tab-content active">
+      <!-- Add the "Add New Context" button -->
+      <button onclick="showAddContextPopup()">Add New Context</button>
+
+      <!-- Popup Modal for Adding New Context -->
+      <div id="add-context-popup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 500px; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); padding: 20px; z-index: 1000;">
+        <label for="persona-title">Title your persona:</label><br>
+        <input type="text" id="persona-title" name="persona-title" style="width: 100%;"><br><br>
+        
+        <label for="presentation-purpose">Presentation purpose:</label><br>
+        <input type="text" id="presentation-purpose" name="presentation-purpose" placeholder="This slide is for..." style="width: 100%;"><br><br>
+        
+        <label for="audience-settings">Audience settings:</label><br>
+        <input type="text" id="audience-settings" name="audience-settings" placeholder="The audiences are..." style="width: 100%;"><br><br>
+        
+        <label for="core-instructions">Core instructions:</label><br>
+        <input id="core-instructions" name="core-instructions" placeholder="The persona should..." rows="2" style="width: 100%;"><br><br>
+        
+        <label for="guardrails">Guardrails:</label><br>
+        <input id="guardrails" name="guardrails" placeholder="The persona should not..." rows="2" style="width: 100%;"><br><br>
+        
+        <label for="example-questions">Example questions:</label><br>
+        <input type="text" id="example-questions" name="example-questions" style="width: 100%;"><br><br>
+        
+        <!-- Buttons for saving or canceling -->
+        <button onclick="saveContext()">Save</button>
+        <button onclick="closeAddContextPopup()">Cancel</button>
+      </div>
+
+      <!-- Overlay for the popup -->
+      <div id="popup-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999;" onclick="closeAddContextPopup()"></div>
+
+      <!-- <button onclick="saveContext()">Save Context</button> -->
+
+      <!-- Section to display saved contexts -->
+      <div id="saved-context" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f9f9f9;">
+        <!-- <h4>Saved Personas</h4> -->
+        <div id="context-display"></div>
+      </div>
+      <button onclick="generateQuestions()">Generate Questions</button>
+
+    <div id="questions" class="tab-content">
+      <? if (typeof comments !== 'undefined' && comments.length > 0) { 
+          for (var i = 0; i < comments.length; i++) { 
+              var item = comments[i];
+      ?>
+        <div class="card" onclick="highlightText('<?= item.text.replace(/'/g, "\\'") ?>')">
+          <div class="card-text"><?= item.text ?></div>
+          <div class="card-feedback"><?= item.feedback ?></div>
+        </div>
+      <? } } else { ?>
+        <p>No comments available.</p>
+      <? } ?>
+    </div>
+
+    <script>
+      function showTab(tabId) {
+        const tabs = document.querySelectorAll('.tab-content');
+        const buttons = document.querySelectorAll('.tab-button');
+
+        tabs.forEach(tab => {
+          tab.classList.remove('active');
+        });
+
+        buttons.forEach(button => {
+          button.classList.remove('active');
+        });
+
+        document.getElementById(tabId).classList.add('active');
+        event.target.classList.add('active');
+      }
+
+      function highlightText(text) {
+        google.script.run.highlightSlideText(text);
+      }
+
+      // Function to show the popup
+      function showAddContextPopup(context = null) {
+        // If a context is provided, populate the fields with its data
+        if (context) {
+          document.getElementById('persona-title').value = context.title || '';
+          document.getElementById('presentation-purpose').value = context.purpose || '';
+          document.getElementById('audience-settings').value = context.audience || '';
+          document.getElementById('core-instructions').value = context.instructions || '';
+          document.getElementById('guardrails').value = context.guardrails || '';
+          document.getElementById('example-questions').value = context.examples || '';
+        } else {
+          // Clear the fields if no context is provided
+          document.getElementById('persona-title').value = '';
+          document.getElementById('presentation-purpose').value = '';
+          document.getElementById('audience-settings').value = '';
+          document.getElementById('core-instructions').value = '';
+          document.getElementById('guardrails').value = '';
+          document.getElementById('example-questions').value = '';
+        }
+
+        document.getElementById('add-context-popup').style.display = 'block';
+        document.getElementById('popup-overlay').style.display = 'block';
+      }
+
+      // Function to close the popup
+      function closeAddContextPopup() {
+        document.getElementById('add-context-popup').style.display = 'none';
+        document.getElementById('popup-overlay').style.display = 'none';
+      }
+
+      // Function to save the context
+      function saveContext() {
+        const context = {
+          title: document.getElementById("persona-title").value,
+          purpose: document.getElementById("presentation-purpose").value,
+          audience: document.getElementById("audience-settings").value,
+          instructions: document.getElementById("core-instructions").value,
+          guardrails: document.getElementById("guardrails").value,
+          examples: document.getElementById("example-questions").value
+        };
+
+        // Display the saved context below the form
+        const contextDisplay = document.getElementById("context-display");
+        const newContextHTML = `
+          <div class="saved-context-item" style="margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background-color: #f9f9f9; cursor: pointer;">
+            <p><strong>${context.title}</strong></p>
+            <button onclick='showAddContextPopup(${JSON.stringify(context)})'>View/Modify</button>
+          </div>
+        `;
+        contextDisplay.innerHTML += newContextHTML; // Append the new context
+
+        // Clear the input fields
+        document.getElementById("persona-title").value = '';
+        document.getElementById("presentation-purpose").value = '';
+        document.getElementById("audience-settings").value = ''; 
+        document.getElementById("core-instructions").value = '';
+        document.getElementById("guardrails").value = '';
+        document.getElementById("example-questions").value = '';
+
+        // Close the popup
+        closeAddContextPopup();
+
+        // Alert the user that the context has been saved
+        alert("Context saved!");
+      }
+
+      // Example JSON data (this would be loaded from a file in a real scenario)
+      const savedContexts = [
+        {
+          title: 'Google Workspace UX Research',
+          purpose: "final presentation",
+          audience: "senior ux researcher",
+          instructions: "The persona should be a senior UX researcher with a focus on Google Workspace products.",
+          guardrails: "The persona should not include any personal opinions or biases.",
+          examples: "Did you ask about these tools in the interviews and surveys too?"
+        },
+        {
+          title: 'Marketing Persona',
+          purpose: "Marketing strategy",
+          audience: "Marketing managers",
+          instructions: "The persona should focus on marketing strategies for social media.",
+          guardrails: "The persona should not include outdated marketing practices.",
+          examples: "What are the latest trends in social media marketing?"
+        }
+      ];
+
+      // Function to load saved contexts into the display
+      function loadSavedContexts() {
+        const contextDisplay = document.getElementById("context-display");
+        contextDisplay.innerHTML = ''; // Clear existing content
+
+        savedContexts.forEach((context, index) => {
+          const contextHTML = `
+            <div class="saved-context-item" 
+                style="margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background-color: #f9f9f9; cursor: pointer;" 
+                onclick="toggleSelectPersona(${index}, this)">
+              <p><strong>${context.title}</strong></p>
+              <button onclick="event.stopPropagation(); showAddContextPopup(savedContexts[${index}])">View/Modify</button>
+            </div>
+          `;
+          contextDisplay.innerHTML += contextHTML;
+        });
+      }
+
+      // Array to track selected personas
+      const selectedPersonas = [];
+
+      // Function to toggle selection of a persona
+      function toggleSelectPersona(index, element) {
+        const selectedIndex = selectedPersonas.indexOf(index);
+
+        if (selectedIndex > -1) {
+          // If already selected, deselect it
+          selectedPersonas.splice(selectedIndex, 1);
+          element.style.backgroundColor = '#f9f9f9'; // Reset background color
+        } else {
+          // If not selected, add it to the selection
+          selectedPersonas.push(index);
+          element.style.backgroundColor = '#e0f2fe'; // Highlight selected item
+        }
+      }
+
+      // Function to generate questions based on selected personas
+      function generateQuestions() {
+        if (selectedPersonas.length === 0) {
+          alert("Please select at least one persona to generate questions.");
+          return;
+        }
+
+        const selectedContexts = selectedPersonas.map(index => savedContexts[index]);
+        console.log("Selected Personas:", selectedContexts);
+
+        // Example: Navigate to the "Questions" tab and display selected personas
+        showTab('questions');
+        const questionsTab = document.getElementById('questions');
+        questionsTab.innerHTML = '<h4>Generated Questions</h4>';
+
+        selectedContexts.forEach(context => {
+          questionsTab.innerHTML += `
+            <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background-color: #ffffff;">
+              <p><strong>${context.title}</strong></p>
+              <p>Purpose: ${context.purpose}</p>
+              <p>Audience: ${context.audience}</p>
+              <p>Instructions: ${context.instructions}</p>
+              <p>Guardrails: ${context.guardrails}</p>
+              <p>Example Questions: ${context.examples}</p>
+            </div>
+          `;
+        });
+      }
+      // C
+      // all the function to load saved contexts when the page loads
+      document.addEventListener("DOMContentLoaded", loadSavedContexts);
+
+      function selectContext(element) {
+        // Toggle the highlight of the selected context
+        if (element.style.backgroundColor === 'rgb(224, 242, 254)') {
+          element.style.backgroundColor = '#f9f9f9'; // Deselect if already selected
+        } else {
+          element.style.backgroundColor = '#e0f2fe'; // Highlight selected item
+        }
+      }
+
+      function generateQuestions() {
+        // Navigate to the "Questions" tab
+        showTab('questions');
+      }
+
+      function showTab(tabId) {
+        const tabs = document.querySelectorAll('.tab-content');
+        const buttons = document.querySelectorAll('.tab-button');
+
+        tabs.forEach(tab => {
+          tab.classList.remove('active');
+        });
+
+        buttons.forEach(button => {
+          button.classList.remove('active');
+        });
+
+        document.getElementById(tabId).classList.add('active');
+        document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`).classList.add('active');
+      }
+    </script>
+  </body>
+</html>

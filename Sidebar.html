@@ -5,7 +5,6 @@
     <base target="_top">
     <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <span class="material-icons">info</span>
     <style>
       body {
         font-family: 'Inter', sans-serif;
@@ -172,6 +171,7 @@
     </div>
 
     <script>
+      // UI Management
       function showTab(tabId) {
         const tabs = document.querySelectorAll('.tab-content');
         const buttons = document.querySelectorAll('.tab-button');
@@ -190,9 +190,9 @@
         document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`).classList.add('active');
       }
 
-      function highlightText(text) {
-        google.script.run.highlightSlideText(text);
-      }
+      // function highlightText(text) {
+      //   google.script.run.highlightSlideText(text);
+      // }
 
       // Function to show the popup
       function showAddContextPopup(context = null) {
@@ -224,6 +224,7 @@
         document.getElementById('popup-overlay').style.display = 'none';
       }
 
+      // Context Management
       // Function to save the context
       function saveContext() {
         const context = {
@@ -253,7 +254,7 @@
         document.getElementById("guardrails").value = '';
         document.getElementById("example-questions").value = '';
 
-        // Close the popup
+        // Close the popup and overlay automatically
         closeAddContextPopup();
 
         // Alert the user that the context has been saved
@@ -298,6 +299,9 @@
         });
       }
 
+      // all the function to load saved contexts when the page loads
+      document.addEventListener("DOMContentLoaded", loadSavedContexts);
+
       // Array to track selected personas
       const selectedPersonas = [];
 
@@ -316,190 +320,206 @@
         }
       }
 
+      // Question Management
       function generateQuestions() {
-        console.log("Generate Questions button clicked."); // Debugging log
+        console.log("Generate Questions button clicked.");
 
         if (selectedPersonas.length === 0) {
-          console.error("No personas selected. Please select at least one persona.");
           alert("Please select at least one persona before generating questions.");
           return;
         }
 
         const selectedContexts = selectedPersonas.map(index => savedContexts[index]);
-        console.log("Selected contexts:", selectedContexts);
 
-        // Show the loading indicator
+        // Show loading indicator and overlay
         const loadingIndicator = document.getElementById('loading-indicator');
+        const overlay = document.getElementById('popup-overlay');
         loadingIndicator.style.display = 'block';
+        overlay.style.display = 'block'; // Show the overlay
 
-        // Clear previous questions and dropdowns
-        const displayDiv = document.getElementById('questions-display');
-        displayDiv.innerHTML = ''; // Clear previous content
-
-        const versionDropdown = document.getElementById('version-dropdown');
-        versionDropdown.innerHTML = ''; // Clear previous versions
-
-        const personaDropdown = document.getElementById('persona-dropdown');
-        personaDropdown.innerHTML = ''; // Clear previous personas
-
-        // Call the Apps Script function to generate questions
         google.script.run
           .withSuccessHandler(function(currentQuestions) {
-            console.log("Received questions:", currentQuestions); // Log the received data
-
-            // Hide the loading indicator
+            // Hide loading indicator and overlay
             loadingIndicator.style.display = 'none';
+            overlay.style.display = 'none';
 
-            if (!Array.isArray(currentQuestions)) {
-              console.error("Current questions is not an array:", currentQuestions);
-              currentQuestions = [];
-            }
-
-            // Get the current timestamp
-            const currentTimestamp = new Date().toISOString();
-
-            // Populate the version dropdown with all timestamps
-            populateVersionDropdown();
-
-            // Populate the version dropdown with the current timestamp
-            versionDropdown.innerHTML = `<option value="${currentTimestamp}">${currentTimestamp}</option>`;
-            versionDropdown.value = currentTimestamp;
-
-            // Populate the persona dropdown
-            personaDropdown.innerHTML = '<option value="all">All Personas</option>';
-            personaDropdown.value = 'all';
-
-            // Display the generated questions
-            if (currentQuestions.length === 0) {
-              displayDiv.innerHTML = '<p>No questions available.</p>';
-              return;
-            }
-
-            currentQuestions.forEach(item => {
-              if (!item.questions || !Array.isArray(item.questions)) {
-                console.error("Invalid questions format for item:", item);
-                return;
-              }
-
-              item.questions.forEach(q => {
-                displayDiv.innerHTML += `
-                  <div class="card">
-                    <p class="card-persona"><strong>Persona:</strong> ${item.persona}</p>
-                    <p class="card-text"><strong>Text:</strong> ${q.text}</p>
-                    <p class="card-question"><strong>Question:</strong> ${q.question}</p>
-                  </div>
-                `;
-              });
-            });
-
-            // Automatically switch to the "Questions" tab
-            showTab('questions');
+            // Show the popup/modal with generated questions
+            showGeneratedQuestionsPopup(currentQuestions);
           })
           .withFailureHandler(function(error) {
-            console.error("Error generating questions:", error); // Log any errors
-            alert("Failed to generate questions. Please try again.");
-
-            // Hide the loading indicator
+            // Hide loading indicator and overlay
             loadingIndicator.style.display = 'none';
+            overlay.style.display = 'none';
+
+            alert("Failed to generate questions. Please try again.");
           })
-          .generateComments(selectedContexts); // Pass the selected contexts to the backend
+          .generateComments(selectedContexts);
       }
 
-      // all the function to load saved contexts when the page loads
-      document.addEventListener("DOMContentLoaded", loadSavedContexts);
+      function showGeneratedQuestionsPopup(questions) {
+        const modal = document.createElement('div');
+        modal.id = 'generated-questions-popup';
+        modal.style = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 90%;
+          max-width: 600px;
+          max-height: 80%; /* Limit height to make it scrollable */
+          overflow-y: auto; /* Enable vertical scrolling */
+          background: white;
+          border: 1px solid #ccc;
+          border-radius: 8px;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          padding: 20px;
+          z-index: 1000;
+        `;
 
-      function selectContext(element) {
-        // Toggle the highlight of the selected context
-        if (element.style.backgroundColor === 'rgb(224, 242, 254)') {
-          element.style.backgroundColor = '#f9f9f9'; // Deselect if already selected
-        } else {
-          element.style.backgroundColor = '#e0f2fe'; // Highlight selected item
+        const overlay = document.createElement('div');
+        overlay.id = 'popup-overlay';
+        overlay.style = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 999;
+        `;
+        overlay.onclick = () => closeGeneratedQuestionsPopup();
+
+        const header = document.createElement('h2');
+        header.textContent = 'Generated Questions';
+
+        const questionList = document.createElement('div');
+        questions.forEach((item, index) => {
+          item.questions.forEach(q => {
+            const explanation = `This question was generated based on the persona "${item.persona}" and the context "${q.text}". It aims to address the core instructions and guardrails provided.`;
+
+            const questionDiv = document.createElement('div');
+            questionDiv.style = `
+              margin-bottom: 15px;
+              padding: 10px;
+              border: 1px solid #ddd;
+              border-radius: 6px;
+              background-color: #f9f9f9;
+            `;
+            questionDiv.innerHTML = `
+              <p><strong>Persona:</strong> ${item.persona}</p>
+              <p><strong>Text:</strong> ${q.text}</p>
+              <p><strong>Question:</strong> ${q.question}</p>
+              <button onclick="saveSingleQuestion('${item.persona}', '${q.question}')">Save</button>
+              <button onclick="toggleExplanation(this)">Why this question is generated?</button>
+              <div class="explanation" style="display: none; margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background-color: #f9f9f9;">
+                <p>${explanation}</p>
+              </div>
+            `;
+            questionList.appendChild(questionDiv);
+          });
+        });
+
+        const saveAllButton = document.createElement('button');
+        saveAllButton.textContent = 'Save All';
+        saveAllButton.onclick = () => saveAllQuestions(questions);
+
+        const regenerateButton = document.createElement('button');
+        regenerateButton.textContent = 'Regenerate';
+        regenerateButton.onclick = () => regenerateQuestions();
+
+        const editContextButton = document.createElement('button');
+        editContextButton.textContent = 'Edit Context';
+        editContextButton.onclick = () => showAddContextPopup();
+
+        modal.appendChild(header);
+        modal.appendChild(questionList);
+        modal.appendChild(saveAllButton);
+        modal.appendChild(regenerateButton);
+        modal.appendChild(editContextButton);
+
+        document.body.appendChild(modal);
+        document.body.appendChild(overlay);
+      }
+
+      function closeGeneratedQuestionsPopup() {
+        const modal = document.getElementById('generated-questions-popup');
+        const overlay = document.getElementById('popup-overlay');
+
+        if (modal) {
+          modal.remove(); // Remove the modal
+        }
+
+        if (overlay) {
+          overlay.remove(); // Remove the overlay
         }
       }
 
-      function showTab(tabId) {
-        const tabs = document.querySelectorAll('.tab-content');
-        const buttons = document.querySelectorAll('.tab-button');
-
-        // Hide all tabs and deactivate all buttons
-        tabs.forEach(tab => {
-          tab.classList.remove('active');
-        });
-
-        buttons.forEach(button => {
-          button.classList.remove('active');
-        });
-
-        // Show the selected tab and activate the corresponding button
-        document.getElementById(tabId).classList.add('active');
-        document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`).classList.add('active');
-      }
-
-      function saveSettings() {
-        const apiKey = document.getElementById("api-key").value;
-        const model = document.getElementById("model").value;
-
-        console.log("API Key:", apiKey);
-        console.log("Model:", model);
-
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-          console.log("google.script.run is defined. Saving settings...");
-          google.script.run
-            .withSuccessHandler(() => {
-              console.log("Settings saved successfully.");
-              alert("Settings saved!");
-            })
-            .withFailureHandler((error) => {
-              console.error("Error saving settings:", error);
-              alert("Failed to save settings. Please try again.");
-            })
-            .saveApiKey(apiKey);
-        } else {
-          console.error("google.script.run is not defined. Are you running this in a Google Apps Script environment?");
-          alert("Error: Unable to save settings. Please check your environment.");
-        }
-      }
-
-      // Populate the persona dropdown
-      function populatePersonaDropdown(personas) {
-        const dropdown = document.getElementById('persona-dropdown');
-        personas.forEach(persona => {
-          const option = document.createElement('option');
-          option.value = persona;
-          option.textContent = persona;
-          dropdown.appendChild(option);
-        });
-      }
-
-      // Populate the version dropdown
-      function populateVersionDropdown() {
+      function saveSingleQuestion(persona, question) {
+        console.log(`Saving question for persona "${persona}": ${question}`);
+        
+        // Logic to save the question
         google.script.run
-          .withSuccessHandler(function(timestamps) {
-            const versionDropdown = document.getElementById('version-dropdown');
-            versionDropdown.innerHTML = ''; // Clear previous versions
-
-            // Add "All Versions" option
-            const allOption = document.createElement('option');
-            allOption.value = 'all';
-            allOption.textContent = 'All Versions';
-            versionDropdown.appendChild(allOption);
-
-            // Populate the dropdown with all timestamps
-            timestamps.forEach(timestamp => {
-              const option = document.createElement('option');
-              option.value = timestamp;
-              option.textContent = timestamp;
-              versionDropdown.appendChild(option);
-            });
-
-            // Select the most recent timestamp by default
-            if (timestamps.length > 0) {
-              versionDropdown.value = timestamps[timestamps.length - 1];
-            }
-          })
-          .getAllTimestamps(); // Call the backend function
+          // .withSuccessHandler(function() {
+          //   alert("Question saved successfully!");
+          //   closeGeneratedQuestionsPopup(); // Close the popup and overlay automatically
+          // })
+          .saveGeneratedQuestions(persona, [question]);
       }
 
+      function saveAllQuestions(questions) {
+        console.log("Saving all questions:", questions);
+
+        const timestamp = new Date().toISOString(); // Generate a single timestamp for all personas
+
+        // Use a Promise chain to ensure all personas are saved sequentially
+        const savePromises = questions.map(item => {
+          return new Promise((resolve, reject) => {
+            google.script.run
+              .withSuccessHandler(function() {
+                console.log(`Questions for persona "${item.persona}" saved successfully.`);
+                resolve(); // Resolve the promise when saving is successful
+              })
+              .withFailureHandler(function(error) {
+                console.error(`Failed to save questions for persona "${item.persona}":`, error);
+                reject(error); // Reject the promise if saving fails
+              })
+              .saveGeneratedQuestions(item.persona, item.questions.map(q => ({
+                text: q.text,
+                question: q.question
+              })), timestamp); // Pass the same timestamp for all personas
+          });
+        });
+
+        // Wait for all save operations to complete
+        Promise.all(savePromises)
+          .then(() => {
+            alert("All questions saved successfully!");
+            closeGeneratedQuestionsPopup(); // Close the popup and overlay automatically
+            showTab('questions'); // Switch to the Questions tab
+
+            // Refresh the dropdowns to include the newly added version
+            populateDropdowns();
+
+            // Refresh the data to display newly saved questions
+            refreshQuestions();
+          })
+          .catch(error => {
+            alert("Failed to save all questions. Please try again.");
+            console.error("Error saving questions:", error);
+          });
+      }
+
+      function refreshQuestions() {
+        google.script.run.withSuccessHandler(function(savedData) {
+          displayQuestions(savedData); // Display the updated questions
+        }).getSavedQuestions();
+      }
+
+      function regenerateQuestions() {
+        closeGeneratedQuestionsPopup();
+        generateQuestions(); // Call the generateQuestions function again
+      }
+      
       function populateDropdowns() {
         google.script.run.withSuccessHandler(function(savedData) {
           if (!Array.isArray(savedData)) {
@@ -532,14 +552,9 @@
         }).getSavedQuestions();
       }
 
-      // Fetch saved questions and populate both dropdowns
+      // Populate dropdowns with saved data
       google.script.run.withSuccessHandler(function(savedData) {
-        const personas = [...new Set(savedData.map(item => item.persona))]; // Unique personas
-        const timestamps = savedData.map(item => item.timestamp);
-
-        populatePersonaDropdown(personas);
-        populateVersionDropdown(timestamps);
-
+        populateDropdowns(savedData); // Populate both dropdowns
         displayQuestions(savedData); // Display all questions by default
       }).getSavedQuestions();
 
@@ -565,34 +580,28 @@
 
         questions.forEach(item => {
           item.questions.forEach(q => {
+            const explanation = `This question was generated based on the persona "${item.persona}" and the context "${q.text}". It aims to address the core instructions and guardrails provided.`;
+
             displayDiv.innerHTML += `
               <div class="card">
                 <p class="card-persona"><strong>Persona:</strong> ${item.persona}</p>
                 <p class="card-text"><strong>Text:</strong> ${q.text}</p>
                 <p class="card-question"><strong>Question:</strong> ${q.question}</p>
                 <button onclick="deleteQuestion('${item.persona}', '${item.timestamp}', '${q.question}')">Delete</button>
+                <button onclick="toggleExplanation(this)">Why this question is generated?</button>
+                <div class="explanation" style="display: none; margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background-color: #f9f9f9;">
+                  <p>${explanation}</p>
+                </div>
               </div>
             `;
           });
         });
       }
-    
-      // Function to delete a question
-      function deleteQuestion(persona, timestamp, questionText) {
-        if (!confirm("Are you sure you want to delete this question?")) {
-          return; // Exit if the user cancels the confirmation
-        }
 
-        google.script.run
-          .withSuccessHandler(function(success) {
-            if (success) {
-              alert("Question deleted successfully.");
-              filterQuestionsByPersonaAndVersion(); // Refresh the displayed questions
-            } else {
-              alert("Failed to delete the question. Please try again.");
-            }
-          })
-          .deleteQuestion(persona, timestamp, questionText);
+      // Function to toggle the explanation visibility
+      function toggleExplanation(button) {
+        const explanationDiv = button.nextElementSibling;
+        explanationDiv.style.display = explanationDiv.style.display === 'none' ? 'block' : 'none';
       }
     </script>
   </body>

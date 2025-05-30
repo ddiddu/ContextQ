@@ -29,6 +29,11 @@ function getApiKey() {
   return apiKey;
 }
 
+function saveContextData(context) {
+  // You can log it, store in PropertiesService, or associate with slide notes
+  Logger.log("Saved context: " + JSON.stringify(context));
+}
+
 function getSlideContent() {
   const slides = SlidesApp.getActivePresentation().getSlides();
   let targetIndex = 2; // Slide 3 (0-based index)
@@ -125,63 +130,67 @@ function generateComments(selectedContexts) {
   return allQuestions;
 }
 
-function highlightSlideText(targetText) {
-  const slides = SlidesApp.getActivePresentation().getSlides();
+// function highlightSlideText(targetText) {
+//   const slides = SlidesApp.getActivePresentation().getSlides();
 
-  for (let slide of slides) {
-    const shapes = slide.getShapes();
-    for (let shape of shapes) {
-      if (shape.getShapeType() === SlidesApp.ShapeType.TEXT_BOX) {
-        const textRange = shape.getText();
-        const text = textRange.asString();
+//   for (let slide of slides) {
+//     const shapes = slide.getShapes();
+//     for (let shape of shapes) {
+//       if (shape.getShapeType() === SlidesApp.ShapeType.TEXT_BOX) {
+//         const textRange = shape.getText();
+//         const text = textRange.asString();
 
-        if (text.includes(targetText)) {
-          // Simulate highlight by wrapping the target text
-          const start = text.indexOf(targetText);
-          const end = start + targetText.length;
-          textRange.getRange(start, end).setBold(true).setForegroundColor('#d62828'); // Reddish color
-          slide.selectAsCurrentPage();
-          shape.select();
-          return;
-        }
-      }
-    }
-  }
+//         if (text.includes(targetText)) {
+//           // Simulate highlight by wrapping the target text
+//           const start = text.indexOf(targetText);
+//           const end = start + targetText.length;
+//           textRange.getRange(start, end).setBold(true).setForegroundColor('#d62828'); // Reddish color
+//           slide.selectAsCurrentPage();
+//           shape.select();
+//           return;
+//         }
+//       }
+//     }
+//   }
 
-  SlidesApp.getUi().alert("Could not find the text on any slide.");
-}
+//   SlidesApp.getUi().alert("Could not find the text on any slide.");
+// }
 
-function saveContextData(context) {
-  // You can log it, store in PropertiesService, or associate with slide notes
-  Logger.log("Saved context: " + JSON.stringify(context));
-}
-
-function saveGeneratedQuestions(personaTitle, questions) {
-  const timestamp = new Date().toISOString(); // Get the current date and time in ISO format
-  const savedData = {
-    persona: personaTitle,
-    questions: questions,
-    timestamp: timestamp
-  };
-
-  // Save the data in the script's user properties
+function saveGeneratedQuestions(personaTitle, questions, timestamp) {
   const userProperties = PropertiesService.getUserProperties();
   const existingData = userProperties.getProperty('generatedQuestions');
   const allData = existingData ? JSON.parse(existingData) : [];
 
-  // Avoid saving duplicate questions
-  const isDuplicate = allData.some(item => 
-    item.persona === personaTitle && item.timestamp === timestamp
-  );
+  // Check if the persona with the same timestamp already exists
+  const isDuplicate = allData.some(item => item.persona === personaTitle && item.timestamp === timestamp);
 
   if (!isDuplicate) {
-    allData.push(savedData);
+    // Append the new data for the persona
+    allData.push({
+      persona: personaTitle,
+      questions: questions,
+      timestamp: timestamp
+    });
+
+    // Save the updated data back to user properties
     userProperties.setProperty('generatedQuestions', JSON.stringify(allData));
-    Logger.log("Saved generated questions: " + JSON.stringify(savedData));
   } else {
-    Logger.log("Duplicate questions detected. Skipping save.");
+    Logger.log(`Duplicate entry detected for persona "${personaTitle}" with timestamp "${timestamp}".`);
   }
+
+  return true; // Indicate success
 }
+
+// function saveGeneratedQuestionsBatch(allData) {
+//   const userProperties = PropertiesService.getUserProperties();
+//   const existingData = userProperties.getProperty('generatedQuestions');
+//   const savedData = existingData ? JSON.parse(existingData) : [];
+
+//   allData.forEach(data => savedData.push(data));
+//   userProperties.setProperty('generatedQuestions', JSON.stringify(savedData));
+
+//   return true; // Indicate success
+// }
 
 function getSavedQuestions() {
   const userProperties = PropertiesService.getUserProperties();
@@ -194,6 +203,19 @@ function getSavedQuestions() {
     Logger.log("No saved questions found.");
     return [];
   }
+}
+
+function getAllTimestamps() {
+  const userProperties = PropertiesService.getUserProperties();
+  const savedData = userProperties.getProperty('generatedQuestions');
+  if (!savedData) {
+    return [];
+  }
+
+  const allData = JSON.parse(savedData);
+  const timestamps = allData.map(item => item.timestamp);
+  Logger.log("All timestamps: " + JSON.stringify(timestamps));
+  return timestamps;
 }
 
 function getFilteredQuestionsByPersonaAndVersion(selectedPersona, selectedVersion) {
@@ -214,19 +236,6 @@ function getFilteredQuestionsByPersonaAndVersion(selectedPersona, selectedVersio
 
   Logger.log(`Filtered Data: ${JSON.stringify(filteredData)}`);
   return filteredData;
-}
-
-function getAllTimestamps() {
-  const userProperties = PropertiesService.getUserProperties();
-  const savedData = userProperties.getProperty('generatedQuestions');
-  if (!savedData) {
-    return [];
-  }
-
-  const allData = JSON.parse(savedData);
-  const timestamps = allData.map(item => item.timestamp);
-  Logger.log("All timestamps: " + JSON.stringify(timestamps));
-  return timestamps;
 }
 
 function deleteQuestion(persona, timestamp, questionText) {

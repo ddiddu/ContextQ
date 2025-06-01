@@ -2,35 +2,6 @@
 
 **ContextQ** is a Google Slides add-on designed to generate contextual audience questions using AI personas. This tool leverages contextual inputs such as presentation purpose and audience demographics to foster reflexive thinking during slide creation.
 
-
-
-## **Features**
-
-### **Context Management**
-- Add, view, and modify AI personas with contextual details:
-  - Persona title
-  - Presentation purpose
-  - Audience settings
-  - Core instructions
-  - Guardrails
-  - Example questions
-- Save and manage multiple personas for different contexts.
-
-### **Question Generation**
-- Generate audience questions based on selected personas.
-- Use OpenAI's GPT-4 model to create insightful and meaningful questions tailored to the persona's purpose and audience.
-
-### **Versioning and Filtering**
-- Save generated questions with timestamps for version control.
-- Filter questions by persona or version for easy access.
-
-### **Interactive UI**
-- Tab-based interface for managing contexts, questions, and settings.
-- Dynamic dropdowns for selecting personas and versions.
-- Loading indicators and overlays for better user feedback during operations.
-
-
-
 ## **File Structure**
 
 ### **HTML**
@@ -43,8 +14,6 @@
 
 ### **Server-Side Code**
 - `Code.js`: Contains server-side logic for interacting with Google Slides and OpenAI's API.
-
-
 
 ## **Installation**
 
@@ -72,8 +41,6 @@
 6. Deploy the add-on:
    - Go to Deploy > Test deployments in the Apps Script editor.
    - Install the add-on in Google Slides.
-
-
 
 ## Usage ##
 1. Open a Google Slides presentation.

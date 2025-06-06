@@ -36,7 +36,7 @@ function saveContextData(context) {
 
 function getSlideContent() {
   const slides = SlidesApp.getActivePresentation().getSlides();
-  let targetIndex = 2; // Slide 3 (0-based index)
+  let targetIndex = 1; // Slide 2 (0-based index)
 
   if (targetIndex >= slides.length) {
     Logger.log("Slide index out of bounds. Total slides: " + slides.length);

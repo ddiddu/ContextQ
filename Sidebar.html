@@ -91,16 +91,23 @@
 
     <!-- Context Tab -->
     <div id="context" class="tab-content active">
-      <!-- Add the "Add New Context" button -->
-      <button onclick="showAddContextPopup()">Add New Context</button>
+
+      <!-- <label for="persona-title">Title your persona:</label><br>
+      <input type="text" id="persona-title" name="persona-title" style="width: 100%;"><br><br> -->
+      
+      <label for="presentation-purpose">Presentation purpose:</label><br>
+      <input type="text" id="presentation-purpose" name="presentation-purpose" placeholder="This slide is for..." style="width: 100%;"><br><br>
+      
+      <label for="audience-settings">Choose Personas:</label><br>
+      <input type="text" id="audience-settings" name="audience-settings" placeholder="The audiences are..." style="width: 100%;"><br><br>
 
       <!-- Popup Modal for Adding New Context -->
       <div id="add-context-popup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 500px; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); padding: 20px; z-index: 1000;">
         <label for="persona-title">Title your persona:</label><br>
         <input type="text" id="persona-title" name="persona-title" style="width: 100%;"><br><br>
         
-        <label for="presentation-purpose">Presentation purpose:</label><br>
-        <input type="text" id="presentation-purpose" name="presentation-purpose" placeholder="This slide is for..." style="width: 100%;"><br><br>
+        <!-- <label for="presentation-purpose">Presentation purpose:</label><br>
+        <input type="text" id="presentation-purpose" name="presentation-purpose" placeholder="This slide is for..." style="width: 100%;"><br><br> -->
         
         <label for="audience-settings">Audience settings:</label><br>
         <input type="text" id="audience-settings" name="audience-settings" placeholder="The audiences are..." style="width: 100%;"><br><br>
@@ -128,6 +135,10 @@
       <div id="saved-context" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f9f9f9;">
         <div id="context-display"></div>
       </div>
+      
+      <!-- Add the "Add New Context" button -->
+      <button onclick="showAddContextPopup()">Add New Persona</button>
+      
       <button onclick="generateQuestions()">Generate Questions</button>
     </div>
 
@@ -171,7 +182,7 @@
     </div>
 
     <script>
-      // UI Management
+      // UI MANAGEMENT
       function showTab(tabId) {
         const tabs = document.querySelectorAll('.tab-content');
         const buttons = document.querySelectorAll('.tab-button');
@@ -189,10 +200,6 @@
         document.getElementById(tabId).classList.add('active');
         document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`).classList.add('active');
       }
-
-      // function highlightText(text) {
-      //   google.script.run.highlightSlideText(text);
-      // }
 
       // Function to show the popup
       function showAddContextPopup(context = null) {
@@ -224,7 +231,7 @@
         document.getElementById('popup-overlay').style.display = 'none';
       }
 
-      // Context Management
+      // CONTEXT MANAGEMENT
       // Function to save the context
       function saveContext() {
         const context = {
@@ -320,36 +327,52 @@
         }
       }
 
-      // Question Management
+      // QUESTION MANAGEMENT
       function generateQuestions() {
         console.log("Generate Questions button clicked.");
 
+        // Check if any personas are selected
         if (selectedPersonas.length === 0) {
+          console.log("No personas selected.");
           alert("Please select at least one persona before generating questions.");
           return;
         }
 
+        console.log("Selected personas:", selectedPersonas);
+
+        // Map selected personas to their corresponding contexts
         const selectedContexts = selectedPersonas.map(index => savedContexts[index]);
+        console.log("Selected contexts:", selectedContexts);
 
         // Show loading indicator and overlay
         const loadingIndicator = document.getElementById('loading-indicator');
         const overlay = document.getElementById('popup-overlay');
         loadingIndicator.style.display = 'block';
         overlay.style.display = 'block'; // Show the overlay
+        console.log("Loading indicator and overlay displayed.");
 
+        // Call the Google Apps Script function
         google.script.run
           .withSuccessHandler(function(currentQuestions) {
+            console.log("Success handler called.");
+            console.log("Generated questions:", currentQuestions);
+
             // Hide loading indicator and overlay
             loadingIndicator.style.display = 'none';
             overlay.style.display = 'none';
+            console.log("Loading indicator and overlay hidden.");
 
             // Show the popup/modal with generated questions
             showGeneratedQuestionsPopup(currentQuestions);
           })
           .withFailureHandler(function(error) {
+            console.log("Failure handler called.");
+            console.error("Error generating questions:", error);
+
             // Hide loading indicator and overlay
             loadingIndicator.style.display = 'none';
             overlay.style.display = 'none';
+            console.log("Loading indicator and overlay hidden after failure.");
 
             alert("Failed to generate questions. Please try again.");
           })
@@ -602,6 +625,28 @@
       function toggleExplanation(button) {
         const explanationDiv = button.nextElementSibling;
         explanationDiv.style.display = explanationDiv.style.display === 'none' ? 'block' : 'none';
+      }
+
+      // SETTINGS MANAGEMENT
+      function saveSettings() {
+        const apiKey = document.getElementById('api-key').value;
+        const model = document.getElementById('model').value;
+
+        if (!apiKey) {
+          alert("Please enter an API key.");
+          return;
+        }
+
+        // Save the settings using Google Apps Script
+        google.script.run
+          .withSuccessHandler(function() {
+            alert("Settings saved successfully!");
+          })
+          .withFailureHandler(function(error) {
+            alert("Failed to save settings. Please try again.");
+            console.error("Error saving settings:", error);
+          })
+          .saveApiKey(apiKey); // Save the API key
       }
     </script>
   </body>

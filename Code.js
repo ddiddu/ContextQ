@@ -3,6 +3,7 @@ function onOpen() {
   ui.createMenu('ContextQ')
       .addItem('Context', 'menuItem1')
       .addItem('Questions', 'menuItem2')
+      .addItem('Chat', 'menuItem3')
       .addToUi();
 }
 
@@ -13,6 +14,12 @@ function menuItem1() {
 }
 
 function menuItem2() {
+}
+
+function menuItem3() {
+  const template = HtmlService.createTemplateFromFile('Sidebar');
+  const html = template.evaluate().setTitle('Chat with AI');
+  SlidesApp.getUi().showSidebar(html);
 }
 
 function saveApiKey(apiKey) {
@@ -130,32 +137,6 @@ function generateComments(selectedContexts) {
   return allQuestions;
 }
 
-// function highlightSlideText(targetText) {
-//   const slides = SlidesApp.getActivePresentation().getSlides();
-
-//   for (let slide of slides) {
-//     const shapes = slide.getShapes();
-//     for (let shape of shapes) {
-//       if (shape.getShapeType() === SlidesApp.ShapeType.TEXT_BOX) {
-//         const textRange = shape.getText();
-//         const text = textRange.asString();
-
-//         if (text.includes(targetText)) {
-//           // Simulate highlight by wrapping the target text
-//           const start = text.indexOf(targetText);
-//           const end = start + targetText.length;
-//           textRange.getRange(start, end).setBold(true).setForegroundColor('#d62828'); // Reddish color
-//           slide.selectAsCurrentPage();
-//           shape.select();
-//           return;
-//         }
-//       }
-//     }
-//   }
-
-//   SlidesApp.getUi().alert("Could not find the text on any slide.");
-// }
-
 function saveGeneratedQuestions(personaTitle, questions, timestamp) {
   const userProperties = PropertiesService.getUserProperties();
   const existingData = userProperties.getProperty('generatedQuestions');
@@ -180,17 +161,6 @@ function saveGeneratedQuestions(personaTitle, questions, timestamp) {
 
   return true; // Indicate success
 }
-
-// function saveGeneratedQuestionsBatch(allData) {
-//   const userProperties = PropertiesService.getUserProperties();
-//   const existingData = userProperties.getProperty('generatedQuestions');
-//   const savedData = existingData ? JSON.parse(existingData) : [];
-
-//   allData.forEach(data => savedData.push(data));
-//   userProperties.setProperty('generatedQuestions', JSON.stringify(savedData));
-
-//   return true; // Indicate success
-// }
 
 function getSavedQuestions() {
   const userProperties = PropertiesService.getUserProperties();
@@ -260,3 +230,35 @@ function deleteQuestion(persona, timestamp, questionText) {
   Logger.log("Updated questions after deletion: " + JSON.stringify(updatedData));
   return true;
 }
+
+function sendChatMessage(message) {
+  const apiKey = getApiKey(); // Retrieve the saved API key
+  const model = 'gpt-4o-mini-2024-07-18'; // Use the selected model
+
+  const payload = {
+    model: model,
+    messages: [
+      { role: 'system', content: 'You are an assistant helping with slide-related queries.' },
+      { role: 'user', content: message }
+    ]
+  };
+
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  try {
+    const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', options);
+    const json = JSON.parse(response.getContentText());
+    return json.choices[0].message.content; // Return the assistant's response
+  } catch (e) {
+    Logger.log('Error sending chat message: ' + e.message);
+    return 'Failed to send message. Please check your API key and try again.';
+  }
+} 

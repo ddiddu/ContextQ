@@ -87,6 +87,7 @@
       <div class="tab-button active" onclick="showTab('context')">Context</div>
       <div class="tab-button active" onclick="showTab('questions')">Questions</div>
       <div class="tab-button active" onclick="showTab('settings')">Settings</div>
+      <div class="tab-button active" onclick="showTab('chat')">Chat</div>
     </div>      
 
     <!-- Context Tab -->
@@ -179,6 +180,18 @@
       </select><br><br>
     
       <button onclick="saveSettings()">Save Settings</button>
+    </div>
+
+    <!-- Chat Tab -->
+    <div id="chat" class="tab-content">
+      <label for="chat-input">Ask a question:</label><br>
+      <textarea id="chat-input" placeholder="Type your question here..." rows="4" style="width: 100%;"></textarea><br><br>
+      <button onclick="sendChat()">Send</button>
+    
+      <!-- Chat log section -->
+      <div id="chat-log" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f9f9f9; max-height: 300px; overflow-y: auto;">
+        <!-- Chat messages will be dynamically displayed here -->
+      </div>
     </div>
 
     <script>
@@ -647,6 +660,74 @@
             console.error("Error saving settings:", error);
           })
           .saveApiKey(apiKey); // Save the API key
+      }
+
+      // CHAT MANAGEMENT
+      function sendChat() {
+        const message = document.getElementById('chat-input').value;
+        if (!message.trim()) {
+          alert('Please enter a message.');
+          return;
+        }
+
+        const responseDiv = document.getElementById('chat-response');
+        responseDiv.innerHTML = '<p>Sending...</p>'; // Show loading message
+
+        google.script.run
+          .withSuccessHandler(function(response) {
+            responseDiv.innerHTML = `<p><strong>Assistant:</strong> ${response}</p>`;
+          })
+          .withFailureHandler(function(error) {
+            responseDiv.innerHTML = '<p>Failed to send message. Please try again.</p>';
+            console.error('Error:', error);
+          })
+          .sendChatMessage(message);
+      }
+
+      // Array to store chat history
+      const chatHistory = [];
+
+      function sendChat() {
+        const message = document.getElementById('chat-input').value;
+        if (!message.trim()) {
+          alert('Please enter a message.');
+          return;
+        }
+
+        // Add the user's message to the chat log
+        chatHistory.push({ role: 'user', content: message });
+        updateChatLog();
+
+        const responseDiv = document.getElementById('chat-log');
+        responseDiv.innerHTML += '<p><strong>Assistant:</strong> Sending...</p>'; // Show loading message
+
+        google.script.run
+          .withSuccessHandler(function(response) {
+            // Add the assistant's response to the chat log
+            chatHistory.push({ role: 'assistant', content: response });
+            updateChatLog();
+          })
+          .withFailureHandler(function(error) {
+            responseDiv.innerHTML += '<p><strong>Assistant:</strong> Failed to send message. Please try again.</p>';
+            console.error('Error:', error);
+          })
+          .sendChatMessage(message);
+
+        // Clear the input field
+        document.getElementById('chat-input').value = '';
+      }
+
+      function updateChatLog() {
+        const chatLogDiv = document.getElementById('chat-log');
+        chatLogDiv.innerHTML = ''; // Clear previous content
+
+        chatHistory.forEach(entry => {
+          const role = entry.role === 'user' ? 'You' : 'Assistant';
+          chatLogDiv.innerHTML += `<p><strong>${role}:</strong> ${entry.content}</p>`;
+        });
+
+        // Scroll to the bottom of the chat log
+        chatLogDiv.scrollTop = chatLogDiv.scrollHeight;
       }
     </script>
   </body>

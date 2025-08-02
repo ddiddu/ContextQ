@@ -1,368 +1,198 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <base target="_top">
-    <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <title>Let’s help you prepare for your presentation.</title>
+    <!-- Polyfill for custom elements (required in Apps Script iframe) -->
+    <script src="https://cdn.jsdelivr.net/npm/@webcomponents/webcomponentsjs@2.6.0/webcomponents-bundle.js"></script>
+
+    <!-- ✅ Use unpkg for ALL Material Web Components -->
+    <script type="module" src="https://unpkg.com/@material/web/button/filled-button.js?module"></script>
+    <script type="module" src="https://unpkg.com/@material/web/textfield/outlined-text-field.js?module"></script>
+    <script type="module" src="https://unpkg.com/@material/web/select/outlined-select.js?module"></script>
+    <script type="module" src="https://unpkg.com/@material/web/select/select-option.js?module"></script>
+    <script type="module" src="https://unpkg.com/@material/web/card/outlined-card.js?module"></script>
+    <script type="module" src="https://unpkg.com/@material/web/button/outlined-button.js?module"></script>
+    <script type="module" src="https://unpkg.com/@material/web/progress/circular-progress.js?module"></script>
+
+    <!-- Roboto font -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
     <style>
+      :root {
+        /* 🟦 Blue theme */
+        --md-sys-color-primary: #3b82f6;            /* blue-500 */
+        --md-sys-color-on-primary: #ffffff;         /* white text on blue */
+        --md-sys-color-surface: #ffffff;            /* white background */
+        --md-sys-color-background: #ffffff;         /* page background */
+        --md-sys-color-outline: #d1d5db;            /* light gray border */
+        --md-sys-color-on-surface: #111827;         /* dark text on white */
+        --md-sys-color-surface-container-high: #ffffff; /* dropdown background */
+      }
       body {
-        font-family: 'Inter', sans-serif;
-        background: #f4f6f8;
-        margin: 0;
-        padding: 10px;
-        color: #333;
+        font-family: Roboto, sans-serif;
+        padding: 0.5rem;
       }
-      .tab-button {
-        background-color: #ffffff;
-        border-radius: 8px 8px 0 0;
-        border: 1px solid #ddd;
-        transition: background 0.2s ease;
-      }
-      .tab-button.active {
-        background-color: #e0f2fe;
-        font-weight: 600;
-      }
-      .tab-content {
-        border: 1px solid #ccc;
-        padding: 10px;
-        display: none;
-      }
-      .tab-content.active {
-        display: block;
-      }
-      input, textarea {
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        padding: 8px;
-        font-size: 14px;
+      md-outlined-select,
+      md-outlined-text-field {
         width: 100%;
-        box-sizing: border-box;
+        max-width: 100%;
+        margin-bottom: 16px;
       }
-      button {
-        background-color: #3b82f6;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 15px;
-        cursor: pointer;
-        font-weight: bold;
-        margin-top: 10px;
+      md-filled-button {
         width: 100%;
+        margin-top: 12px;
+        border: none !important;
       }
-      button:hover {
-        background-color: #2563eb;
+      md-outlined-select::part(menu) {
+        background-color: white !important;
       }
       .card {
+        background: #ffffff;
         border-radius: 12px;
-        border: 1px solid #ccc;
-        padding: 15px;
-        background-color: #ffffff;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb; /* subtle outline */
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        padding: 16px;
         margin-bottom: 20px;
+        transition: box-shadow 0.2s ease;
       }
+
       .card:hover {
-        background-color: #f9f9f9;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
       }
-      .card-persona {
-        font-size: 16px;
-        font-weight: bold;
-        color: #3b82f6;
-        margin-bottom: 10px;
-      }
-      .card-text {
+
+      .card-header {
         font-size: 14px;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 5px;
+        color: #1f2937;
+        margin-bottom: 8px;
       }
+
+      .card-body {
+        font-size: 14px;
+        color: #374151;
+        margin-bottom: 8px;
+      }
+
       .card-question {
         font-size: 14px;
-        color: #555;
+        color: #111827;
+        font-weight: 500;
+        margin-bottom: 16px;
+      }
+
+      .card-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      #loading-indicator {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: var(--md-sys-color-surface, #ffffff);
+        color: var(--md-sys-color-on-surface, #1f2937);
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        padding: 24px 32px;
+        font-size: 16px;
+        font-weight: 500;
+        z-index: 1000;
+        text-align: center;
+      }
+
+      #loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(250, 250, 250, 0.6); /* light blur look */
+        z-index: 999;
+        backdrop-filter: blur(2px);
       }
     </style>
   </head>
   <body>
-    <div class="tab-buttons">
-      <div class="tab-button active" onclick="showTab('context')">Context</div>
-      <div class="tab-button active" onclick="showTab('questions')">Questions</div>
-      <div class="tab-button active" onclick="showTab('settings')">Settings</div>
-      <div class="tab-button active" onclick="showTab('chat')">Chat</div>
-    </div>      
-
     <!-- Context Tab -->
-    <div id="context" class="tab-content active">
-
-      <!-- <label for="persona-title">Title your persona:</label><br>
-      <input type="text" id="persona-title" name="persona-title" style="width: 100%;"><br><br> -->
-      
-      <label for="presentation-purpose">Presentation purpose:</label><br>
-      <input type="text" id="presentation-purpose" name="presentation-purpose" placeholder="This slide is for..." style="width: 100%;"><br><br>
-      
-      <label for="audience-settings">Choose Personas:</label><br>
-      <input type="text" id="audience-settings" name="audience-settings" placeholder="The audiences are..." style="width: 100%;"><br><br>
-
-      <!-- Popup Modal for Adding New Context -->
-      <div id="add-context-popup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 500px; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); padding: 20px; z-index: 1000;">
-        <label for="persona-title">Title your persona:</label><br>
-        <input type="text" id="persona-title" name="persona-title" style="width: 100%;"><br><br>
-        
-        <!-- <label for="presentation-purpose">Presentation purpose:</label><br>
-        <input type="text" id="presentation-purpose" name="presentation-purpose" placeholder="This slide is for..." style="width: 100%;"><br><br> -->
-        
-        <label for="audience-settings">Audience settings:</label><br>
-        <input type="text" id="audience-settings" name="audience-settings" placeholder="The audiences are..." style="width: 100%;"><br><br>
-        
-        <label for="core-instructions">Core instructions:</label><br>
-        <input id="core-instructions" name="core-instructions" placeholder="The persona should..." rows="2" style="width: 100%;"><br><br>
-        
-        <label for="guardrails">Guardrails:</label><br>
-        <input id="guardrails" name="guardrails" placeholder="The persona should not..." rows="2" style="width: 100%;"><br><br>
-        
-        <label for="example-questions">Example questions:</label><br>
-        <input type="text" id="example-questions" name="example-questions" style="width: 100%;"><br><br>
-        
-        <!-- Buttons for saving or canceling -->
-        <button onclick="saveContext()">Save</button>
-        <button onclick="closeAddContextPopup()">Cancel</button>
-      </div>
+    <!-- <div id="context" class="tab-content active"> -->
+      <!-- <div class="section"> -->
+      <md-outlined-text-field
+        id="presentation-purpose"
+        label="Enter Your Context"
+        supporting-text="e.g., Presentation Purpose, Audience"
+      ></md-outlined-text-field>
+      <!-- </div> -->
 
       <!-- Overlay for the popup -->
       <div id="popup-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999;" onclick="closeAddContextPopup()"></div>
 
-      <!-- <button onclick="saveContext()">Save Context</button> -->
+      <md-filled-button onclick="generateQuestions()" style="margin-bottom: 20px; margin-top: -10px;">Save Context</md-filled-button>
 
-      <!-- Section to display saved contexts -->
-      <div id="saved-context" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f9f9f9;">
-        <div id="context-display"></div>
+      <md-outlined-select label="Tone" id="tone-dropdown" onchange="filterQuestionsByToneAndType()">
+        <md-select-option value="very positive">Very Positive</md-select-option>
+        <md-select-option value="positive">Positive</md-select-option>
+        <md-select-option value="neutral">Neutral</md-select-option>
+        <md-select-option value="critical">Critical</md-select-option>
+        <md-select-option value="very critical">Very Critical</md-select-option>
+      </md-outlined-select>
+
+      <md-outlined-select id="type-dropdown" label="Type" onchange="filterQuestionsByToneAndType()">
+        <md-select-option value="all">Both</md-select-option>
+        <md-select-option value="low">Question</md-select-option>
+        <md-select-option value="high">Feedback</md-select-option>
+      </md-outlined-select>
       </div>
-      
-      <!-- Add the "Add New Context" button -->
-      <button onclick="showAddContextPopup()">Add New Persona</button>
-      
-      <button onclick="generateQuestions()">Generate Questions</button>
-    </div>
-
-    <!-- Questions Tab -->
-    <div id="questions" class="tab-content">
-      <!-- Dropdown for selecting versions -->
-      <label for="version-dropdown">Select Version:</label>
-      <select id="version-dropdown" onchange="filterQuestionsByPersonaAndVersion()">
-        <option value="all">All Versions</option>
-      </select>
-
-      <!-- Dropdown for selecting personas -->
-      <label for="persona-dropdown">Select Persona:</label>
-      <select id="persona-dropdown" onchange="filterQuestionsByPersonaAndVersion()">
-        <option value="all">All Personas</option>
-      </select>
     
       <!-- Section to display filtered questions -->
-      <div id="questions-display" style="margin-top: 20px;">
+      <div id="questions-display" style="margin-top: 10px;">
         <!-- Questions will be dynamically displayed here -->
       </div>
     </div>
 
-    <div id="loading-indicator" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.7); color: white; padding: 20px; border-radius: 8px; font-size: 16px; z-index: 1000;">
-      Loading, please wait...
+    <div id="loading-indicator">
+      <md-circular-progress indeterminate></md-circular-progress>
+      <div style="margin-top: 12px;">Loading, please wait...</div>
     </div>
-
-    <!-- Settings Tab -->
-    <div id="settings" class="tab-content">
-      <label for="api-key">API Key:</label><br>
-      <input type="text" id="api-key" placeholder="Your OpenAI API Key" style="width: 100%;"><br><br>
-    
-      <label for="model">Model:</label><br>
-      <select id="model" style="width: 100%;">
-        <option value="gpt-4o-mini-2024-07-18">gpt-4o</option>
-        <!-- <option value="gpt-3.5-turbo">gpt-3.5-turbo</option> -->
-        <!-- <option value="gpt-4">gpt-4</option> -->
-      </select><br><br>
-    
-      <button onclick="saveSettings()">Save Settings</button>
-    </div>
-
-    <!-- Chat Tab -->
-    <div id="chat" class="tab-content">
-      <label for="chat-input">Ask a question:</label><br>
-      <textarea id="chat-input" placeholder="Type your question here..." rows="4" style="width: 100%;"></textarea><br><br>
-      <button onclick="sendChat()">Send</button>
-    
-      <!-- Chat log section -->
-      <div id="chat-log" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f9f9f9; max-height: 300px; overflow-y: auto;">
-        <!-- Chat messages will be dynamically displayed here -->
-      </div>
-    </div>
+    <!-- </div> -->
 
     <script>
-      // UI MANAGEMENT
-      function showTab(tabId) {
-        const tabs = document.querySelectorAll('.tab-content');
-        const buttons = document.querySelectorAll('.tab-button');
-
-        // Hide all tabs and deactivate all buttons
-        tabs.forEach(tab => {
-          tab.classList.remove('active');
-        });
-
-        buttons.forEach(button => {
-          button.classList.remove('active');
-        });
-
-        // Show the selected tab and activate the corresponding button
-        document.getElementById(tabId).classList.add('active');
-        document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`).classList.add('active');
-      }
-
-      // Function to show the popup
-      function showAddContextPopup(context = null) {
-        // If a context is provided, populate the fields with its data
-        if (context) {
-          document.getElementById('persona-title').value = context.title || '';
-          document.getElementById('presentation-purpose').value = context.purpose || '';
-          document.getElementById('audience-settings').value = context.audience || '';
-          document.getElementById('core-instructions').value = context.instructions || '';
-          document.getElementById('guardrails').value = context.guardrails || '';
-          document.getElementById('example-questions').value = context.examples || '';
-        } else {
-          // Clear the fields if no context is provided
-          document.getElementById('persona-title').value = '';
-          document.getElementById('presentation-purpose').value = '';
-          document.getElementById('audience-settings').value = '';
-          document.getElementById('core-instructions').value = '';
-          document.getElementById('guardrails').value = '';
-          document.getElementById('example-questions').value = '';
-        }
-
-        document.getElementById('add-context-popup').style.display = 'block';
-        document.getElementById('popup-overlay').style.display = 'block';
-      }
-
-      // Function to close the popup
-      function closeAddContextPopup() {
-        document.getElementById('add-context-popup').style.display = 'none';
-        document.getElementById('popup-overlay').style.display = 'none';
-      }
-
-      // CONTEXT MANAGEMENT
-      // Function to save the context
-      function saveContext() {
-        const context = {
-          title: document.getElementById("persona-title").value,
-          purpose: document.getElementById("presentation-purpose").value,
-          audience: document.getElementById("audience-settings").value,
-          instructions: document.getElementById("core-instructions").value,
-          guardrails: document.getElementById("guardrails").value,
-          examples: document.getElementById("example-questions").value
-        };
-
-        // Display the saved context below the form
-        const contextDisplay = document.getElementById("context-display");
-        const newContextHTML = `
-          <div class="saved-context-item" style="margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background-color: #f9f9f9; cursor: pointer;">
-            <p><strong>${context.title}</strong></p>
-            <button onclick='showAddContextPopup(${JSON.stringify(context)})'>View/Modify</button>
-          </div>
-        `;
-        contextDisplay.innerHTML += newContextHTML; // Append the new context
-
-        // Clear the input fields
-        document.getElementById("persona-title").value = '';
-        document.getElementById("presentation-purpose").value = '';
-        document.getElementById("audience-settings").value = ''; 
-        document.getElementById("core-instructions").value = '';
-        document.getElementById("guardrails").value = '';
-        document.getElementById("example-questions").value = '';
-
-        // Close the popup and overlay automatically
-        closeAddContextPopup();
-
-        // Alert the user that the context has been saved
-        alert("Context saved!");
-      }
-
-      // Example JSON data (this would be loaded from a file in a real scenario)
-      const savedContexts = [
-        {
-          title: 'Google Workspace UX Research',
-          purpose: "final presentation",
-          audience: "senior ux researcher",
-          instructions: "The persona should be a senior UX researcher with a focus on Google Workspace products.",
-          guardrails: "The persona should not include any personal opinions or biases.",
-          examples: "interesting to see so many ChatGPT users, especially since it seems many users are concerned about privacy, how their data is being used, etc. Did you get a sense (in the interviews, survey, or both) if these product managers' companies had paid ChatGPT licenses? Or, were the product managers using their own personal ChatGPT account to get AI assistance?"
-        },
-        {
-          title: 'Marketing Persona',
-          purpose: "Marketing strategy",
-          audience: "Marketing managers",
-          instructions: "The persona should focus on marketing strategies for social media.",
-          guardrails: "The persona should not include outdated marketing practices.",
-          examples: "What are the latest trends in social media marketing?"
-        }
-      ];
-
-      // Function to load saved contexts into the display
-      function loadSavedContexts() {
-        const contextDisplay = document.getElementById("context-display");
-        contextDisplay.innerHTML = ''; // Clear existing content
-
-        savedContexts.forEach((context, index) => {
-          const contextHTML = `
-            <div class="saved-context-item" 
-                style="margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background-color: #f9f9f9; cursor: pointer;" 
-                onclick="toggleSelectPersona(${index}, this)">
-              <p><strong>${context.title}</strong></p>
-              <button onclick="event.stopPropagation(); showAddContextPopup(savedContexts[${index}])">View/Modify</button>
-            </div>
-          `;
-          contextDisplay.innerHTML += contextHTML;
-        });
-      }
-
-      // all the function to load saved contexts when the page loads
-      document.addEventListener("DOMContentLoaded", loadSavedContexts);
-
-      // Array to track selected personas
-      const selectedPersonas = [];
-
-      // Function to toggle selection of a persona
-      function toggleSelectPersona(index, element) {
-        const selectedIndex = selectedPersonas.indexOf(index);
-
-        if (selectedIndex > -1) {
-          // If already selected, deselect it
-          selectedPersonas.splice(selectedIndex, 1);
-          element.style.backgroundColor = '#f9f9f9'; // Reset background color
-        } else {
-          // If not selected, add it to the selection
-          selectedPersonas.push(index);
-          element.style.backgroundColor = '#e0f2fe'; // Highlight selected item
-        }
-      }
+      // Global variable to store currently generated questions
+      let currentGeneratedQuestions = [];
 
       // QUESTION MANAGEMENT
       function generateQuestions() {
         console.log("Generate Questions button clicked.");
 
-        // Check if any personas are selected
-        if (selectedPersonas.length === 0) {
-          console.log("No personas selected.");
-          alert("Please select at least one persona before generating questions.");
+        // Get the user-provided context from the input field
+        const contextInput = document.getElementById('presentation-purpose').value.trim();
+        if (!contextInput) {
+          console.log("No context provided.");
+          alert("Please enter a context before generating questions.");
           return;
         }
 
-        console.log("Selected personas:", selectedPersonas);
+        console.log("User-provided context:", contextInput);
 
-        // Map selected personas to their corresponding contexts
-        const selectedContexts = selectedPersonas.map(index => savedContexts[index]);
-        console.log("Selected contexts:", selectedContexts);
+        // Prepare the context object
+        const selectedContexts = [
+          {
+            context: contextInput,
+          }
+        ];
 
         // Show loading indicator and overlay
         const loadingIndicator = document.getElementById('loading-indicator');
-        const overlay = document.getElementById('popup-overlay');
+        const overlay = document.createElement('div');
+        overlay.id = 'loading-overlay';
+        document.body.appendChild(overlay);
         loadingIndicator.style.display = 'block';
-        overlay.style.display = 'block'; // Show the overlay
-        console.log("Loading indicator and overlay displayed.");
+        console.log("Loading indicator displayed.");
+
+        // Clear existing questions
+        const displayDiv = document.getElementById('questions-display');
+        displayDiv.innerHTML = ''; // Reset questions display
 
         // Call the Google Apps Script function
         google.script.run
@@ -370,136 +200,30 @@
             console.log("Success handler called.");
             console.log("Generated questions:", currentQuestions);
 
-            // Hide loading indicator and overlay
+            // Hide loading indicator and remove overlay
             loadingIndicator.style.display = 'none';
-            overlay.style.display = 'none';
-            console.log("Loading indicator and overlay hidden.");
+            document.body.removeChild(overlay);
+            console.log("Loading indicator and overlay removed.");
 
-            // Show the popup/modal with generated questions
-            showGeneratedQuestionsPopup(currentQuestions);
+            // Store the generated questions in the global variable
+            currentGeneratedQuestions = currentQuestions;
+
+            // Display the newly generated questions directly below
+            // displayQuestions(currentQuestions);
+            displayQuestions([]);
           })
           .withFailureHandler(function(error) {
             console.log("Failure handler called.");
             console.error("Error generating questions:", error);
 
-            // Hide loading indicator and overlay
+            // Hide loading indicator and remove overlay
             loadingIndicator.style.display = 'none';
-            overlay.style.display = 'none';
-            console.log("Loading indicator and overlay hidden after failure.");
+            document.body.removeChild(overlay);
+            console.log("Loading indicator and overlay removed.");
 
             alert("Failed to generate questions. Please try again.");
           })
           .generateComments(selectedContexts);
-      }
-
-      function showGeneratedQuestionsPopup(questions) {
-        const modal = document.createElement('div');
-        modal.id = 'generated-questions-popup';
-        modal.style = `
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 90%;
-          max-width: 600px;
-          max-height: 80%; /* Limit height to make it scrollable */
-          overflow-y: auto; /* Enable vertical scrolling */
-          background: white;
-          border: 1px solid #ccc;
-          border-radius: 8px;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-          padding: 20px;
-          z-index: 1000;
-        `;
-
-        const overlay = document.createElement('div');
-        overlay.id = 'popup-overlay';
-        overlay.style = `
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.5);
-          z-index: 999;
-        `;
-        overlay.onclick = () => closeGeneratedQuestionsPopup();
-
-        const header = document.createElement('h2');
-        header.textContent = 'Generated Questions';
-
-        const questionList = document.createElement('div');
-        questions.forEach((item, index) => {
-          item.questions.forEach(q => {
-            const explanation = `This question was generated based on the persona "${item.persona}" and the context "${q.text}". It aims to address the core instructions and guardrails provided.`;
-
-            const questionDiv = document.createElement('div');
-            questionDiv.style = `
-              margin-bottom: 15px;
-              padding: 10px;
-              border: 1px solid #ddd;
-              border-radius: 6px;
-              background-color: #f9f9f9;
-            `;
-            questionDiv.innerHTML = `
-              <p><strong>Persona:</strong> ${item.persona}</p>
-              <p><strong>Text:</strong> ${q.text}</p>
-              <p><strong>Question:</strong> ${q.question}</p>
-              <button onclick="saveSingleQuestion('${item.persona}', '${q.question}')">Save</button>
-              <button onclick="toggleExplanation(this)">Why this question is generated?</button>
-              <div class="explanation" style="display: none; margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background-color: #f9f9f9;">
-                <p>${explanation}</p>
-              </div>
-            `;
-            questionList.appendChild(questionDiv);
-          });
-        });
-
-        const saveAllButton = document.createElement('button');
-        saveAllButton.textContent = 'Save All';
-        saveAllButton.onclick = () => saveAllQuestions(questions);
-
-        const regenerateButton = document.createElement('button');
-        regenerateButton.textContent = 'Regenerate';
-        regenerateButton.onclick = () => regenerateQuestions();
-
-        const editContextButton = document.createElement('button');
-        editContextButton.textContent = 'Edit Context';
-        editContextButton.onclick = () => showAddContextPopup();
-
-        modal.appendChild(header);
-        modal.appendChild(questionList);
-        modal.appendChild(saveAllButton);
-        modal.appendChild(regenerateButton);
-        modal.appendChild(editContextButton);
-
-        document.body.appendChild(modal);
-        document.body.appendChild(overlay);
-      }
-
-      function closeGeneratedQuestionsPopup() {
-        const modal = document.getElementById('generated-questions-popup');
-        const overlay = document.getElementById('popup-overlay');
-
-        if (modal) {
-          modal.remove(); // Remove the modal
-        }
-
-        if (overlay) {
-          overlay.remove(); // Remove the overlay
-        }
-      }
-
-      function saveSingleQuestion(persona, question) {
-        console.log(`Saving question for persona "${persona}": ${question}`);
-        
-        // Logic to save the question
-        google.script.run
-          // .withSuccessHandler(function() {
-          //   alert("Question saved successfully!");
-          //   closeGeneratedQuestionsPopup(); // Close the popup and overlay automatically
-          // })
-          .saveGeneratedQuestions(persona, [question]);
       }
 
       function saveAllQuestions(questions) {
@@ -530,8 +254,6 @@
         Promise.all(savePromises)
           .then(() => {
             alert("All questions saved successfully!");
-            closeGeneratedQuestionsPopup(); // Close the popup and overlay automatically
-            showTab('questions'); // Switch to the Questions tab
 
             // Refresh the dropdowns to include the newly added version
             populateDropdowns();
@@ -591,17 +313,30 @@
       // Populate dropdowns with saved data
       google.script.run.withSuccessHandler(function(savedData) {
         populateDropdowns(savedData); // Populate both dropdowns
-        displayQuestions(savedData); // Display all questions by default
+        // displayQuestions(savedData); // Display all questions by default
       }).getSavedQuestions();
 
-      // Filter questions based on the selected persona and version
-      function filterQuestionsByPersonaAndVersion() {
-        const selectedPersona = document.getElementById('persona-dropdown').value;
-        const selectedVersion = document.getElementById('version-dropdown').value;
+      function filterQuestionsByToneAndType() {
+        const selectedTone = document.getElementById('tone-dropdown').value;
+        const selectedType = document.getElementById('type-dropdown').value;
 
-        google.script.run.withSuccessHandler(function(filteredData) {
-          displayQuestions(filteredData);
-        }).getFilteredQuestionsByPersonaAndVersion(selectedPersona, selectedVersion);
+        // Combine saved questions and currently generated questions
+        google.script.run.withSuccessHandler(function(savedData) {
+          const allQuestions = [...savedData, ...currentGeneratedQuestions];
+
+          const filteredQuestions = allQuestions.map(item => {
+            return {
+              persona: item.persona,
+              questions: item.questions.filter(q => {
+                const toneMatches = q.tone === selectedTone;
+                const typeMatches = selectedType === 'all' || q.assistanceLevel === selectedType;
+                return toneMatches && typeMatches; // Match both tone and type
+              })
+            };
+          }).filter(item => item.questions.length > 0); // Remove personas with no matching questions
+
+          displayQuestions(filteredQuestions);
+        }).getSavedQuestions();
       }
 
       // Display questions in the questions-display div
@@ -609,23 +344,50 @@
         const displayDiv = document.getElementById('questions-display');
         displayDiv.innerHTML = ''; // Clear previous content
 
-        if (questions.length === 0) {
-          displayDiv.innerHTML = '<p>No questions available.</p>';
+        if (!questions || questions.length === 0) {
+          displayDiv.innerHTML = `
+            <div style="
+              background-color: #f9fafb;
+              border: 1px solid #e5e7eb;
+              border-radius: 12px;
+              padding: 16px;
+              color: #6b7280;
+              font-size: 14px;
+              text-align: center;
+            ">
+              No questions available. Please select a tone and type to see results.
+            </div>
+          `;
           return;
         }
 
         questions.forEach(item => {
-          item.questions.forEach(q => {
-            const explanation = `This question was generated based on the persona "${item.persona}" and the context "${q.text}". It aims to address the core instructions and guardrails provided.`;
+          item.questions.forEach((q, index) => {
+            const explanationId = `exp-${q.slide}-${index}`;
+            const explanation = q.reason || "No reasoning provided.";
 
             displayDiv.innerHTML += `
               <div class="card">
-                <p class="card-persona"><strong>Persona:</strong> ${item.persona}</p>
-                <p class="card-text"><strong>Text:</strong> ${q.text}</p>
-                <p class="card-question"><strong>Question:</strong> ${q.question}</p>
-                <button onclick="deleteQuestion('${item.persona}', '${item.timestamp}', '${q.question}')">Delete</button>
-                <button onclick="toggleExplanation(this)">Why this question is generated?</button>
-                <div class="explanation" style="display: none; margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background-color: #f9f9f9;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                  <span style="font-size: 12px; color: #6b7280; font-weight: 500;">
+                    ${q.tone}
+                  </span>
+                  <span style="font-size: 12px; color: #6b7280; font-weight: 500;">
+                    ${q.assistanceLevel === 'low' ? 'Question' : 'Feedback'}
+                  </span>
+                </div>
+
+                <p class="card-header"><strong>Slide</strong> ${q.slide}</p>
+                <!-- <p class="card-body">${q.text}</p> -->
+                <p class="card-question">${q.question}</p>
+
+                <div class="card-actions">
+                  <md-outlined-button onclick="toggleExplanation('${explanationId}')">
+                    View Reasoning
+                  </md-outlined-button>
+                </div>
+
+                <div id="${explanationId}" class="explanation" style="display: none; margin-top: 12px; background: #f9fafb; padding: 12px; border-radius: 8px; font-size: 14px; color: #4b5563;">
                   <p>${explanation}</p>
                 </div>
               </div>
@@ -635,15 +397,29 @@
       }
 
       // Function to toggle the explanation visibility
-      function toggleExplanation(button) {
-        const explanationDiv = button.nextElementSibling;
-        explanationDiv.style.display = explanationDiv.style.display === 'none' ? 'block' : 'none';
+      function toggleExplanation(id) {
+        const explanationDiv = document.getElementById(id);
+        if (explanationDiv) {
+          explanationDiv.style.display = (explanationDiv.style.display === 'none') ? 'block' : 'none';
+        }
+      }
+    
+      // Function to delete a question
+      function deleteQuestion(persona, timestamp, question) {
+        google.script.run
+          .withSuccessHandler(() => {
+            refreshQuestions();
+          })
+          .withFailureHandler(error => {
+            console.error("Failed to delete question:", error);
+            alert("Could not delete the question.");
+          })
+          .deleteQuestion(persona, timestamp, question);
       }
 
       // SETTINGS MANAGEMENT
       function saveSettings() {
-        const apiKey = document.getElementById('api-key').value;
-        const model = document.getElementById('model').value;
+        const model = 'gpt-4.1'; // Default model
 
         if (!apiKey) {
           alert("Please enter an API key.");
@@ -660,74 +436,6 @@
             console.error("Error saving settings:", error);
           })
           .saveApiKey(apiKey); // Save the API key
-      }
-
-      // CHAT MANAGEMENT
-      function sendChat() {
-        const message = document.getElementById('chat-input').value;
-        if (!message.trim()) {
-          alert('Please enter a message.');
-          return;
-        }
-
-        const responseDiv = document.getElementById('chat-response');
-        responseDiv.innerHTML = '<p>Sending...</p>'; // Show loading message
-
-        google.script.run
-          .withSuccessHandler(function(response) {
-            responseDiv.innerHTML = `<p><strong>Assistant:</strong> ${response}</p>`;
-          })
-          .withFailureHandler(function(error) {
-            responseDiv.innerHTML = '<p>Failed to send message. Please try again.</p>';
-            console.error('Error:', error);
-          })
-          .sendChatMessage(message);
-      }
-
-      // Array to store chat history
-      const chatHistory = [];
-
-      function sendChat() {
-        const message = document.getElementById('chat-input').value;
-        if (!message.trim()) {
-          alert('Please enter a message.');
-          return;
-        }
-
-        // Add the user's message to the chat log
-        chatHistory.push({ role: 'user', content: message });
-        updateChatLog();
-
-        const responseDiv = document.getElementById('chat-log');
-        responseDiv.innerHTML += '<p><strong>Assistant:</strong> Sending...</p>'; // Show loading message
-
-        google.script.run
-          .withSuccessHandler(function(response) {
-            // Add the assistant's response to the chat log
-            chatHistory.push({ role: 'assistant', content: response });
-            updateChatLog();
-          })
-          .withFailureHandler(function(error) {
-            responseDiv.innerHTML += '<p><strong>Assistant:</strong> Failed to send message. Please try again.</p>';
-            console.error('Error:', error);
-          })
-          .sendChatMessage(message);
-
-        // Clear the input field
-        document.getElementById('chat-input').value = '';
-      }
-
-      function updateChatLog() {
-        const chatLogDiv = document.getElementById('chat-log');
-        chatLogDiv.innerHTML = ''; // Clear previous content
-
-        chatHistory.forEach(entry => {
-          const role = entry.role === 'user' ? 'You' : 'Assistant';
-          chatLogDiv.innerHTML += `<p><strong>${role}:</strong> ${entry.content}</p>`;
-        });
-
-        // Scroll to the bottom of the chat log
-        chatLogDiv.scrollTop = chatLogDiv.scrollHeight;
       }
     </script>
   </body>

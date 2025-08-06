@@ -1,0 +1,406 @@
+<!-- Apps Script does not serve .js files from its file tree like a normal web server -->
+<script>
+const globalToneMap = {
+    1: "very critical",
+    2: "critical",
+    3: "neutral",
+    4: "positive",
+    5: "very positive"
+};
+
+let lastSavedValue = ''; // Store the last saved value
+let selectedToneValue = 3; // from slider (1-5)
+let selectedToneLabel = globalToneMap[selectedToneValue]; // mapped label
+let selectedTypes = null; // plural, for multiple card selections
+let currentGeneratedQuestions = []; // Global variable to store currently generated questions
+let selectedComment = null;
+
+// 1️⃣ STEP 1: 발표 목적 입력 
+function autoResize(textarea) {
+    textarea.style.height = 'auto';
+    const computedStyle = window.getComputedStyle(textarea);
+    const paddingTop = parseFloat(computedStyle.paddingTop);
+    const paddingBottom = parseFloat(computedStyle.paddingBottom);
+    const borderTop = parseFloat(computedStyle.borderTopWidth);
+    const borderBottom = parseFloat(computedStyle.borderBottomWidth);
+    const scrollHeight = textarea.scrollHeight;
+
+    textarea.style.height = `${scrollHeight - paddingTop - paddingBottom - borderTop - borderBottom}px`;
+}
+
+document.getElementById('presentation-purpose').addEventListener('input', function () {
+    const saveButton = document.getElementById('save-button');
+    const currentValue = this.value.trim();
+
+    // 버튼 활성화 조건: 내용이 있고, 마지막 저장 값과 다를 때
+    saveButton.disabled = currentValue === '' || currentValue === lastSavedValue;
+
+    autoResize(this); // 높이 자동 조절
+});
+
+// 2️⃣ STEP 2: 발표 목적 저장 및 Tone 선택 
+function selectTone() {
+    selectedComment = null; // 카드 선택 초기화
+
+    const textarea = document.getElementById('presentation-purpose');
+    const saveButton = document.getElementById('save-button');
+    const currentValue = textarea.value.trim();
+
+    if (currentValue === '') {
+        alert('Input cannot be empty.');
+        return;
+    }
+
+    lastSavedValue = currentValue; // Update the saved value
+    saveButton.disabled = true; // Disable the button
+
+    const container = document.getElementById('tone-container');
+    container.innerHTML = `
+    <div style="margin-bottom: 4px;">
+        <div style="font-size: 14px; font-weight: 500;">Select your desired comment tone.</div>
+        <div style="font-size: 12px; color: #6b7280;">(You can change this later. Only one tone can be selected.)</div>
+    </div>
+
+    <div id="questions-display" style="margin-top: 10px;">
+        <!-- Questions will be dynamically displayed here -->
+    </div>
+
+    <md-filled-button id="next-button" onclick="selectType()" disabled style="margin-top: 0px;">Next</md-filled-button>
+    `;
+
+    // Example comments to display
+    const exampleComments = [
+        { questions: [{ slide: "A", question: "What is the main point of this slide?" }] },
+        { questions: [{ slide: "B", question: "How can this slide be improved?" }] },
+        { questions: [{ slide: "C", question: "Does this slide align with the overall message?" }] }
+    ];
+
+    // Call displayQuestions with hideDetails = true and allowMultiple = false
+    displayQuestions(exampleComments, true, false);
+}
+
+// 3️⃣ STEP 3: Tone 저장 및 Type 선택 
+function selectType() {
+    // STEP 3.1: Tone 저장
+    const toneMap = { A: 1, B: 3, C: 5 };
+    // STEP 3.1.1: 선택된 카드 코드 가져오기
+    const toneCode = selectedComment; // ex: "A", "B", or "C"
+    selectedComment = null; // 카드 선택 초기화
+    // STEP 3.1.2: 코드 → 숫자 변환
+    const toneValue = toneMap[toneCode] || 3; // default to 3 ("neutral") if not found
+    // STEP 3.1.3: tone 업데이트 함수 호출
+    // 이 함수가 window.selectedTone 을 string으로 설정함
+    // Save both numeric value and string label
+    window.selectedToneValue = Number(toneValue);
+    window.selectedToneLabel = globalToneMap[toneValue];
+
+    // STEP 3.2: Type 선택
+    const container = document.getElementById('tone-container');
+    container.innerHTML = `
+    <div style="margin-bottom: 4px;">
+        <div style="font-size: 14px; font-weight: 500;">Select your desired comment type.</div>
+        <div style="font-size: 12px; color: #6b7280;">(You can change this later. Both types can be selected.)</div>
+    </div>
+
+    <div id="questions-display" style="margin-top: 10px;">
+        <!-- Questions will be dynamically displayed here -->
+    </div>
+
+    <div style="display: flex; justify-content: space-between; gap: 5px; margin-top: -10px;">
+        <md-filled-button id="prev-button" onclick="selectTone()">Prev</md-filled-button>
+        <md-filled-button id="next-button" onclick="confirmTypeAndGenerate()" disabled>Next</md-filled-button>
+    </div>
+    `;
+
+    // Example comments to display
+    const exampleComments = [
+        { questions: [{ slide: "A", question: "What is the main point of this slide?" }] },
+        { questions: [{ slide: "B", question: "How can this slide be improved?" }] }
+    ];
+
+    // Call displayQuestions with hideDetails = true and allowMultiple = true
+    displayQuestions(exampleComments, true, true);
+}
+
+// 4️⃣ Step 4: Type 저장 및 Generate Questions
+// Step 4.1: Type 저장
+function confirmTypeAndGenerate() {
+    // 명시적 방어 코드: selectedComment가 null이면 절대 진행 X
+    if (!selectedComment || (Array.isArray(selectedComment) && selectedComment.length === 0)) {
+        alert("Please select a comment type before continuing.");
+        return;
+    }
+
+    // 아래부터는 조건 만족했을 때만 실행
+    selectedTypes = selectedComment;
+    window.selectedType = "all";
+    if (Array.isArray(selectedTypes)) {
+        if (selectedTypes.length === 1 && selectedTypes[0] === "A") window.selectedType = "low";
+        else if (selectedTypes.length === 1 && selectedTypes[0] === "B") window.selectedType = "high";
+    }
+
+    generateQuestions();
+}
+
+// Step 4.2: Generate Questions
+function generateQuestions(toneOverride, typeOverride) {
+    const tone = toneOverride || window.selectedToneLabel;
+    const type = typeOverride || window.selectedType;
+    
+    console.log("Generate questions with tone:", tone, "and type:", selectedType);
+
+    // Get the user-provided context from the input field
+    const contextInput = document.getElementById('presentation-purpose').value.trim();
+    if (!contextInput) {
+        console.log("No context provided.");
+        alert("Please enter a context before proceeding.");
+        return; // Return false if validation fails
+    }
+
+    // Prepare the context object
+    const selectedContexts = [{context: contextInput,}];
+
+    const container = document.getElementById('tone-container');
+    container.innerHTML = `
+    <div id="loading-indicator">
+        <md-circular-progress indeterminate></md-circular-progress>
+        <div style="font-size: 14px; font-weight: 500; margin-top: 5px;">Generating comments for your presentation...</div>
+    </div>
+    `;
+
+    // Call the Google Apps Script function
+    google.script.run
+    .withSuccessHandler(function(currentQuestions) {
+        console.log("✅ Success handler called.");
+        console.log("Generated questions:", currentQuestions);
+
+        // Map selected tone to slider value
+        const defaultToneValue = window.selectedToneValue || 3; // Default to 3 if not set
+
+        const container = document.getElementById('tone-container');
+        container.innerHTML = `
+        <div id="questions-section">
+            <div style="margin-bottom: 4px;">
+                <div style="font-size: 14px; font-weight: 500;">Customize comment tone and type.</div>
+            </div>
+
+            <div class="tone-slider-wrapper" style="margin-top: 10px;">
+                <div class="tone-end-label">Critical</div>
+                <input 
+                    type="range" min="1" max="5" step="1" value="${defaultToneValue}" 
+                    class="tone-slider" id="tone-range" oninput="updateToneLabel(this.value)"
+                />
+                <div class="tone-end-label">Positive</div>
+            </div>
+
+            <div class="radio-group">
+                <label class="radio-option">
+                    <input type="radio" name="type" value="low" ${selectedType === 'low' ? 'checked' : ''} onchange="updateTypeLabel(this.value)">
+                    <span class="custom-radio"></span>
+                    Question
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="type" value="high" ${selectedType === 'high' ? 'checked' : ''} onchange="updateTypeLabel(this.value)">
+                    <span class="custom-radio"></span>
+                    Feedback
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="type" value="all" ${selectedType === 'all' ? 'checked' : ''} onchange="updateTypeLabel(this.value)">
+                    <span class="custom-radio"></span>
+                    Both
+                </label>
+            </div>
+
+            <md-filled-button id="apply-button" onclick="filterQuestionsByToneAndType()" style="margin-top: 8px;">
+                Apply
+            </md-filled-button>
+
+            <div id="questions-display-main" style="margin-top: 20px;">
+            <!-- Questions will be dynamically displayed here -->
+            </div>
+        </div>
+        `;
+
+        const saveButton = document.getElementById("buttons");
+        if (saveButton) {
+            saveButton.innerHTML = `
+            <md-filled-button id="regenerate-button" onclick="generateQuestions()" style="margin-top: -10px; margin-bottom: 20px;">
+                Regenerate
+            </md-filled-button>
+            `;
+        }
+
+        // Store the generated questions in the global variable
+        currentGeneratedQuestions = [...currentGeneratedQuestions, ...currentQuestions];
+
+        // Display the newly generated questions directly below
+        displayQuestions(currentQuestions);
+    })
+    .withFailureHandler(function(error) {
+        console.log("Failure handler called.");
+        console.error("Error generating questions:", error);
+
+        // Hide loading indicator and remove overlay
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+
+        alert("Failed to generate questions. Please try again.");
+    })
+    .generateComments(selectedContexts, tone, selectedType, debugging=false);// Pass the context object to the server-side function
+}
+
+// 5️⃣ Step 5: Filter Questions by Tone and Type
+function filterQuestionsByToneAndType() {
+    const selectedTone = window.selectedToneLabel || "neutral"; // 기본값 fallback    
+    const selectedType = window.selectedType || "all"; // Default to "all" if not set
+
+    // Combine saved questions and currently generated questions
+    const allQuestions = currentGeneratedQuestions
+
+    console.log("Filtering questions with tone:", selectedTone, "and type:", selectedType);
+
+    const filteredQuestions = allQuestions.map(item => {
+        return {
+        // persona: item.persona,
+        questions: item.questions.filter(q => {
+            const toneMatches = q.tone === selectedTone;
+            const typeMatches = selectedType === 'all' || q.assistanceLevel === selectedType;
+            return toneMatches && typeMatches; // Match both tone and type
+        })
+        };
+    }).filter(item => item.questions.length > 0); // Remove personas with no matching questions
+
+    const flat = filteredQuestions.flatMap(p => p.questions);
+
+    if (selectedType === 'all') {
+    const hasLow = flat.some(q => q.assistanceLevel === 'low');
+    const hasHigh = flat.some(q => q.assistanceLevel === 'high');
+
+    if (!hasLow || !hasHigh) {
+        const missingType = !hasLow ? 'low' : 'high';
+        console.log(`🔁 Missing ${missingType} questions — generating just those.`);
+        generateQuestions(selectedTone, missingType); // ← you'll need to allow `selectedType` param
+        return;
+    }
+    }
+
+    if (flat.length === 0) {
+    console.log("🔁 No matching questions found. Generating...");
+    generateQuestions(selectedTone, selectedType);
+    return;
+    }
+
+    displayQuestions(filteredQuestions);
+}
+
+function updateToneLabel(value) {
+    const tone = globalToneMap[value];
+
+    // 선택된 tone을 실제로 어딘가에 저장하거나 필터링에 활용하려면:
+    // 예: 글로벌 변수, hidden input, 또는 직접 질문 필터링 함수 호출
+    // Save both numeric value and string label
+    window.selectedToneValue = Number(value);
+    window.selectedToneLabel = tone;
+
+    // filterQuestionsByToneAndType(); // 이 함수에서 window.selectedTone 활용 가능
+}
+
+function updateTypeLabel(value) {
+    // Update the selected type globally
+    window.selectedType = value;
+
+    // Call the function to filter questions based on the selected tone and type
+    // filterQuestionsByToneAndType();
+}
+
+// External function to validate context input
+function validateContextInput() {
+    const contextInput = document.getElementById('presentation-purpose').value.trim();
+    if (!contextInput) {
+        console.log("No context provided.");
+        alert("Please enter a context before proceeding.");
+        return false; // Return false if validation fails
+    }
+    return contextInput; // Return the valid input
+}
+
+// 6️⃣ Step 6: Regenerate Questions
+function regenerateQuestions() {
+    closeGeneratedQuestionsPopup();
+    currentGeneratedQuestions = []; // Clear the current generated questions
+    generateQuestions(); // Call the generateQuestions function again
+}
+
+// External function to validate context input
+function toggleCardSelection(cardElement, allowMultiple = false) {
+    if (!allowMultiple) {
+        const isSelected = cardElement.classList.contains('selected');
+        document.querySelectorAll('.card').forEach(card => card.classList.remove('selected'));
+
+        if (!isSelected) {
+            cardElement.classList.add('selected');
+            const nextButton = document.getElementById('next-button');
+            if (nextButton) {
+                nextButton.disabled = false;
+            }
+
+            selectedComment = cardElement.querySelector('.card-header').textContent.replace('Option ', '').trim();
+        } else {
+            selectedComment = null; // 강제 초기화
+            document.getElementById('next-button').disabled = true;
+        }
+    } else {
+        cardElement.classList.toggle('selected');
+        const selectedCards = document.querySelectorAll('.card.selected');
+        const anySelected = selectedCards.length > 0;
+        document.getElementById('next-button').disabled = !anySelected;
+
+        selectedComment = Array.from(selectedCards).map(card =>
+            card.querySelector('.card-header').textContent.replace('Option ', '').trim()
+        );
+    }
+}
+
+function toggleThumb(button, direction) {
+    const isSelected = button.classList.contains('active');
+    
+    // Remove active state from both buttons in the same container
+    const siblings = button.parentElement.querySelectorAll('.thumb-button');
+    siblings.forEach(btn => btn.classList.remove('active'));
+
+    // Toggle only if not already active
+    if (!isSelected) {
+        button.classList.add('active');
+    }
+}
+
+// Function to toggle the explanation visibility
+function toggleExplanation(id) {
+    const explanationDiv = document.getElementById(id);
+    if (explanationDiv) {
+    explanationDiv.style.display = (explanationDiv.style.display === 'none') ? 'block' : 'none';
+    }
+}
+
+function displayQuestions(questions, hideDetails = false, allowMultiple = false) {
+    const displayId = hideDetails ? 'questions-display' : 'questions-display-main';
+    const displayDiv = document.getElementById(displayId);
+    displayDiv.innerHTML = '';
+
+    if (!questions || questions.length === 0) {
+        displayDiv.innerHTML = `
+        <div 
+            style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px;
+            padding: 16px; color: #6b7280; font-size: 14px; text-align: center;">
+            Please select a tone and type to see results.
+        </div>`;
+        return;
+    }
+
+    questions.forEach(item => {
+        item.questions.forEach((q, index) => {
+        displayDiv.innerHTML += displayCard(q, index, hideDetails, allowMultiple);
+        });
+    });
+}
+</script>

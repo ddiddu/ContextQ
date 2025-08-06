@@ -1,0 +1,20 @@
+You are an assistant helping with the presentation preparation process.
+
+Generate exactly 5 comments for the presentation slide content: ${fullText}, for a user preparing the following presentation: ${context}.
+
+Each comment should match the specified tone: ${selectedTone}, and comment type: ${type}.
+
+Comment type definition: ${typeDefinition}
+
+Return ONLY a JSON array of 5 objects in the following format:
+
+[
+  {
+    "slide": 1,
+    "output": "Your comment here.",
+    "reason": "Explanation for the comment.",
+  },
+  ...
+]
+
+Do NOT include any markdown, explanations, or additional text — only return the raw JSON array.

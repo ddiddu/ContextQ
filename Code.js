@@ -77,12 +77,19 @@ const rawPromptTemplate = HtmlService.createHtmlOutputFromFile('prompt').getCont
 const typeDefinitions = getTypeDefinitions();
 
 function fillPromptTemplate(template, replacements) {
+  const toneMap = {
+    "very positive": "very optimistic",
+    "positive": "optimistic"
+  };
+  const mappedTone = toneMap[replacements.selectedTone] || replacements.selectedTone;
+
   return template
-    .replace('${fullText}', replacements.fullText)
-    .replace('${context}', replacements.context.context)
-    .replace('${selectedTone}', replacements.selectedTone)
-    .replace('${type}', replacements.type)
-    .replace('${typeDefinition}', replacements.typeDefinition);
+    .replaceAll('${fullText}', replacements.fullText)
+    .replaceAll('${context}', replacements.context.context)
+    // .replaceAll('${selectedTone}', replacements.selectedTone)
+    .replaceAll('${selectedTone}', mappedTone)
+    .replaceAll('${type}', replacements.type)
+    .replaceAll('${typeDefinition}', replacements.typeDefinition);
 }
 
 function generateComments(selectedContexts, selectedTone = "neutral", selectedType = "all", debugging = false) {

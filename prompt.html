@@ -1,20 +1,26 @@
-You are an assistant helping with the presentation preparation process.
+You are an assistant reviewing a presentation slide.
 
-Generate exactly 5 comments for the presentation slide content: ${fullText}, for a user preparing the following presentation: ${context}.
+First, read the full content of the presentation below, which is for the following presentation: ${context}.
 
-Each comment should match the specified tone: ${selectedTone}, and comment type: ${type}.
+Then:
 
-Comment type definition: ${typeDefinition}
+1. Identify exactly **5 problematic fragments** that could benefit from reflection or revision. Each fragment should be a short quote or phrase from the slides.
+2. For each fragment, generate a comment of type **${type}** in the **${selectedTone}** tone. The definition of **${type}** is ${typeDefinition}
+3. Include a **reason** for each comment that explains your thought process in 2–4 steps.
 
 Return ONLY a JSON array of 5 objects in the following format:
 
 [
   {
     "slide": 1,
-    "output": "Your comment here.",
-    "reason": "Explanation for the comment.",
+    "output": "Your comment here",
+    "reason": "Explain why you made the comment",
   },
   ...
 ]
 
-Do NOT include any markdown, explanations, or additional text — only return the raw JSON array.
+Do NOT include markdown, explanations, or labels — only return the JSON array.
+
+Use the following slide content:
+
+${fullText}

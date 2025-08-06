@@ -318,7 +318,7 @@ function validateContextInput() {
     const contextInput = document.getElementById('presentation-purpose').value.trim();
     if (!contextInput) {
         console.log("No context provided.");
-        alert("Please enter a context before proceeding.");
+        alert(CONTEXT_REQUIRED_MESSAGE);
         return false; // Return false if validation fails
     }
     return contextInput; // Return the valid input

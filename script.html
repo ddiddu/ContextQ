@@ -47,7 +47,7 @@ function selectTone() {
     const currentValue = textarea.value.trim();
 
     if (currentValue === '') {
-        alert('Input cannot be empty.');
+        alert('Please enter a presentation description before continuing.');
         return;
     }
 
@@ -147,7 +147,7 @@ function generateQuestions(toneOverride, typeOverride) {
     const tone = toneOverride || window.selectedToneLabel;
     const type = typeOverride || window.selectedType;
     
-    console.log("Generate questions with tone:", tone, "and type:", selectedType);
+    console.log("Generate questions with tone:", tone, "and type:", type);
 
     // Get the user-provided context from the input field
     const contextInput = document.getElementById('presentation-purpose').value.trim();
@@ -318,7 +318,7 @@ function validateContextInput() {
     const contextInput = document.getElementById('presentation-purpose').value.trim();
     if (!contextInput) {
         console.log("No context provided.");
-        alert("Please enter a context before proceeding.");
+        alert(CONTEXT_REQUIRED_MESSAGE);
         return false; // Return false if validation fails
     }
     return contextInput; // Return the valid input

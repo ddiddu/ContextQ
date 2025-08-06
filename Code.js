@@ -85,7 +85,7 @@ function fillPromptTemplate(template, replacements) {
     .replace('${typeDefinition}', replacements.typeDefinition);
 }
 
-function generateComments(selectedContexts, selectedTone = "neutral", selectedType = "all", debugging = false) {
+function generateComments({ selectedContexts, selectedTone = "neutral", selectedType = "all", debugging = false } = {}) {
   Logger.log("generateComments function called with contexts: " + JSON.stringify(selectedContexts));
   Logger.log("Selected tone: " + selectedTone);
   Logger.log("Selected type: " + selectedType);

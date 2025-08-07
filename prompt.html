@@ -1,0 +1,20 @@
+You are an assistant helping with the presentation preparation process.
+
+Generate comments of type **${type}** in a **${selectedTone}** tone. The definition of **${type}** is: ${typeDefinition}.
+
+Generate exactly 5 comments for the following slide content: ${fullText}, for the following presentation context: ${context}.
+
+Include a reason for each comment that reflects your thought process in 2–4 logical steps.
+
+Return only a raw JSON array of 5 objects, in the following format:
+
+[
+  {
+    "slide": 1,
+    "output": "Your comment here",
+    "reason": "Explain why you commented"
+  },
+  ...
+]
+
+Do NOT include markdown, explanations, labels, or any surrounding text — only return the JSON array.

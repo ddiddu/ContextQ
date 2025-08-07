@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <?!= include('head') ?>
+  <?!= include('style') ?>
+  <?!= include('render') ?>
+  <?!= include('script') ?>
+
+  <body>
+    <div id="debug-output" style="margin-top: 10px;"></div>
+
+    <script>
+      const q = {
+        slide: "1",
+        question: "How does this slide connect to your overall goal?",
+        tone: "critical",
+        assistanceLevel: "low",
+        reason: "1. The text describes a problem but doesn’t suggest a solution.\n2. It’s unclear how this fits the argument.\n3. A reflective prompt may help clarify the intent."
+      };
+
+      const container = document.getElementById('debug-output');
+      container.innerHTML = displayCard(q, 0, false, false);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,41 @@
+<script>
+function displayCard(q, index, hideDetails = false, allowMultiple = false) {
+  const explanationId = `exp-${q.slide}-${index}`;
+  const label = hideDetails ? 'Option' : 'Slide';
+  const detailPart = !hideDetails ? `
+    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+      <!-- debugging -->
+      <span style="font-size: 12px; color: #6b7280; font-weight: 500;">${q.tone}</span>
+      <span style="font-size: 12px; color: #6b7280; font-weight: 500;">
+        ${q.assistanceLevel === 'low' ? 'Question' : 'Feedback'}
+      </span>
+    </div>` : '';
+
+  const actionsPart = !hideDetails ? `
+    <div class="card-actions">
+      <div style="display: flex; align-items: center; margin-left: -10px;">
+        <md-text-button class="thinking-toggle-btn" onclick="toggleExplanation('${explanationId}', this)">
+          Show thinking
+        </md-text-button>
+        <md-icon-button class="thumb-button" onclick="toggleThumb(this, 'up')">
+          <md-icon>thumb_up</md-icon>
+        </md-icon-button>
+        <md-icon-button class="thumb-button" onclick="toggleThumb(this, 'down')">
+          <md-icon>thumb_down</md-icon>
+        </md-icon-button>
+      </div>
+    </div>
+    <div id="${explanationId}" class="explanation" 
+      style="display: none; font-size: 12px; color: #6b7280; margin-top: -5px;">
+      <p>${q.reason || 'No reasoning provided.'}</p>
+    </div>` : '';
+
+  return `
+    <div class="card" data-slide="${q.slide}" onclick="toggleCardSelection(this, ${allowMultiple})">
+      ${detailPart}
+      <p class="card-header"><strong>${label}</strong> ${q.slide}</p>
+      <p class="card-question">${q.question}</p>
+      ${actionsPart}
+    </div>`;
+}
+</script>

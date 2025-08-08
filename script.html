@@ -8,7 +8,9 @@ const globalToneMap = {
     5: "very positive"
 };
 
-let lastSavedValue = ''; // Store the last saved value
+let lastGeneratedContext = ''; // Store the last saved value
+let lastGeneratedTone = '';
+let lastGeneratedType = '';
 let selectedToneValue = 3; // from slider (1-5)
 let selectedToneLabel = globalToneMap[selectedToneValue]; // mapped label
 let selectedTypes = null; // plural, for multiple card selections
@@ -33,7 +35,7 @@ document.getElementById('presentation-purpose').addEventListener('input', functi
     const currentValue = this.value.trim();
 
     // 버튼 활성화 조건: 내용이 있고, 마지막 저장 값과 다를 때
-    saveButton.disabled = currentValue === '' || currentValue === lastSavedValue;
+    saveButton.disabled = currentValue === '' || currentValue === lastGeneratedContext;
 
     autoResize(this); // 높이 자동 조절
 });
@@ -51,14 +53,14 @@ function selectTone() {
         return;
     }
 
-    lastSavedValue = currentValue; // Update the saved value
+    lastGeneratedContext = currentValue; // Update the saved value
     saveButton.disabled = true; // Disable the button
 
     const container = document.getElementById('tone-container');
     container.innerHTML = `
     <div style="margin-bottom: 4px;">
         <div style="font-size: 14px; font-weight: 500;">Select your desired comment tone.</div>
-        <div style="font-size: 12px; color: #6b7280;">(You can change this later. Only one tone can be selected.)</div>
+        <div style="font-size: 12px; color: #6b7280;">(Only one tone can be selected. You can change this later.)</div>
     </div>
 
     <div id="questions-display" style="margin-top: 10px;">
@@ -70,9 +72,9 @@ function selectTone() {
 
     // Example comments to display
     const exampleComments = [
-        { questions: [{ slide: "A", question: "What is the main point of this slide?" }] },
-        { questions: [{ slide: "B", question: "How can this slide be improved?" }] },
-        { questions: [{ slide: "C", question: "Does this slide align with the overall message?" }] }
+        { questions: [{ slide: "A", question: "These points lack any definition of key terms—both 'AI teammates' and 'mixed-motived tasking' are left ambiguous, making it hard for the audience to follow your argument or understand the significance of the problems." }] },
+        { questions: [{ slide: "B", question: "Consider defining 'mixed-motived tasking' more explicitly, as this concept may not be familiar to all members of your audience." }] },
+        { questions: [{ slide: "C", question: "Fantastic opening! For even greater clarity, perhaps briefly define 'mixed-motive tasking' since that concept is central to your argument and some listeners may be unfamiliar with it." }] }
     ];
 
     // Call displayQuestions with hideDetails = true and allowMultiple = false
@@ -99,7 +101,7 @@ function selectType() {
     container.innerHTML = `
     <div style="margin-bottom: 4px;">
         <div style="font-size: 14px; font-weight: 500;">Select your desired comment type.</div>
-        <div style="font-size: 12px; color: #6b7280;">(You can change this later. Both types can be selected.)</div>
+        <div style="font-size: 12px; color: #6b7280;">(Both types can be selected. You can change this later.)</div>
     </div>
 
     <div id="questions-display" style="margin-top: 10px;">
@@ -114,8 +116,8 @@ function selectType() {
 
     // Example comments to display
     const exampleComments = [
-        { questions: [{ slide: "A", question: "What is the main point of this slide?" }] },
-        { questions: [{ slide: "B", question: "How can this slide be improved?" }] }
+        { questions: [{ slide: "A", question: "In what ways do you think the limitations of current social cue-based methods could impact the integrity of cooperative team dynamics with AI teammates?" }] },
+        { questions: [{ slide: "B", question: "Integrate brief summaries or implications for each referenced study to clarify their relevance to your thesis idea." }] }
     ];
 
     // Call displayQuestions with hideDetails = true and allowMultiple = true
@@ -144,11 +146,6 @@ function confirmTypeAndGenerate() {
 
 // Step 4.2: Generate Questions
 function generateQuestions(toneOverride, typeOverride) {
-    const tone = toneOverride || window.selectedToneLabel;
-    const type = typeOverride || window.selectedType;
-    
-    console.log("Generate questions with tone:", tone, "and type:", type);
-
     // Get the user-provided context from the input field
     const contextInput = document.getElementById('presentation-purpose').value.trim();
     if (!contextInput) {
@@ -156,9 +153,11 @@ function generateQuestions(toneOverride, typeOverride) {
         alert("Please enter a context before proceeding.");
         return; // Return false if validation fails
     }
-
     // Prepare the context object
     const selectedContexts = [{context: contextInput,}];
+
+    const tone = toneOverride || window.selectedToneLabel;
+    const type = typeOverride || window.selectedType;
 
     const container = document.getElementById('tone-container');
     container.innerHTML = `
@@ -173,6 +172,16 @@ function generateQuestions(toneOverride, typeOverride) {
     .withSuccessHandler(function(currentQuestions) {
         console.log("✅ Success handler called.");
         console.log("Generated questions:", currentQuestions);
+
+        attachButtonListeners();   // <-- add listeners after render
+        checkButtonStates();
+
+        // Save the last generated state
+        lastGeneratedContext = contextInput;
+        lastGeneratedTone = tone;
+        lastGeneratedType = type;
+
+        console.log("Generate questions for", lastGeneratedContext,"with tone:", lastGeneratedTone, "and type:", lastGeneratedType);
 
         // Map selected tone to slider value
         const defaultToneValue = window.selectedToneValue || 3; // Default to 3 if not set
@@ -211,9 +220,16 @@ function generateQuestions(toneOverride, typeOverride) {
                 </label>
             </div>
 
+            <!--
             <md-filled-button id="apply-button" onclick="filterQuestionsByToneAndType()" style="margin-top: 8px;">
                 Apply
             </md-filled-button>
+            -->
+
+            <div id="buttons" style="display: flex; justify-content: space-between; gap: 5px; margin-top: 5px;">
+                <md-filled-button id="update-button" onclick="filterQuestionsByToneAndType()" disabled>Apply</md-filled-button>
+                <md-filled-button id="regenerate-button" onclick="regenerateQuestions()">Regenerate</md-filled-button>
+            </div>
 
             <div id="questions-display-main" style="margin-top: 20px;">
             <!-- Questions will be dynamically displayed here -->
@@ -224,11 +240,15 @@ function generateQuestions(toneOverride, typeOverride) {
         const saveButton = document.getElementById("buttons");
         if (saveButton) {
             saveButton.innerHTML = `
+            <!--
             <md-filled-button id="regenerate-button" onclick="generateQuestions()" style="margin-top: -10px; margin-bottom: 20px;">
                 Regenerate
             </md-filled-button>
+            -->
             `;
         }
+
+        attachButtonListeners();
 
         // Store the generated questions in the global variable
         currentGeneratedQuestions = [...currentGeneratedQuestions, ...currentQuestions];
@@ -326,7 +346,7 @@ function validateContextInput() {
 
 // 6️⃣ Step 6: Regenerate Questions
 function regenerateQuestions() {
-    closeGeneratedQuestionsPopup();
+    // closeGeneratedQuestionsPopup();
     currentGeneratedQuestions = []; // Clear the current generated questions
     generateQuestions(); // Call the generateQuestions function again
 }
@@ -401,6 +421,41 @@ function displayQuestions(questions, hideDetails = false, allowMultiple = false)
         item.questions.forEach((q, index) => {
         displayDiv.innerHTML += displayCard(q, index, hideDetails, allowMultiple);
         });
+    });
+}
+
+function checkButtonStates() {
+    const currentContext = document.getElementById('presentation-purpose').value.trim();
+    const currentTone = window.selectedToneLabel || '';
+    const currentType = window.selectedType || '';
+
+    const contextUnchanged = currentContext === lastGeneratedContext;
+    const toneUnchanged = currentTone === lastGeneratedTone;
+    const typeUnchanged = currentType === lastGeneratedType;
+
+    // Safely get the buttons (may be null)
+    const updateBtn = document.getElementById('update-button');
+    const regenerateBtn = document.getElementById('regenerate-button');
+
+    // Only set disabled if the button exists
+    if (regenerateBtn) {
+        regenerateBtn.disabled = !(contextUnchanged && toneUnchanged && typeUnchanged);
+    }
+    if (updateBtn) {
+        updateBtn.disabled = (contextUnchanged && toneUnchanged && typeUnchanged);
+    }
+}
+
+function attachButtonListeners() {
+    // Only attach if these elements exist
+    const contextInput = document.getElementById('presentation-purpose');
+    if (contextInput) contextInput.addEventListener('input', checkButtonStates);
+
+    const toneRange = document.getElementById('tone-range');
+    if (toneRange) toneRange.addEventListener('input', checkButtonStates);
+
+    document.querySelectorAll('input[name="type"]').forEach(radio => {
+        radio.addEventListener('change', checkButtonStates);
     });
 }
 </script>

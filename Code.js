@@ -47,20 +47,24 @@ function getSlideContent() {
     const shapes = slide.getShapes();
 
     const textItems = shapes
-      .filter(shape =>
-        shape.getText && typeof shape.getText === "function"
-      )
+      .filter(shape => shape.getText && typeof shape.getText === "function")
       .map(shape => shape.getText().asString().trim())
       .filter(text => text !== "");
 
-    const slideText = textItems.join('\n');
-
-    if (slideText) {
-      structuredSlides.push({ slide: i + 1, content: slideText });
+    const speakerNotesObj = slide.getNotesPage().getSpeakerNotesShape();
+    let speakerNotes = "";
+    if (speakerNotesObj && speakerNotesObj.getText) {
+      speakerNotes = speakerNotesObj.getText().asString().trim();
     }
+
+    structuredSlides.push({
+      slide: i + 1,
+      content: textItems.join('\n'),
+      notes: speakerNotes || null
+    });
   }
 
-  Logger.log("Structured slide content:\n" + JSON.stringify(structuredSlides, null, 2));
+  Logger.log("Structured slide content with notes:\n" + JSON.stringify(structuredSlides, null, 2));
   return structuredSlides;
 }
 
@@ -118,8 +122,13 @@ function generateComments(selectedContexts, selectedTone = "neutral", selectedTy
   }
 
   const slideContent = getSlideContent(); // [{slide: 1, content: "..."}]
-  const fullText = slideContent.map(s => `Slide ${s.slide}:\n${s.content}`).join("\n\n");
+  // const fullText = slideContent.map(s => `Slide ${s.slide}:\n${s.content}`).join("\n\n");
 
+  const fullText = slideContent.map(s => {
+    const contentPart = `Slide ${s.slide} (Visible Text):\n${s.content}`;
+    const notesPart = s.notes ? `Slide ${s.slide} (Speaker Notes):\n${s.notes}` : '';
+    return [contentPart, notesPart].filter(Boolean).join("\n\n");
+  }).join("\n\n");
 
   const rawPromptTemplate = HtmlService.createHtmlOutputFromFile('prompt').getContent();
 
@@ -143,7 +152,8 @@ function generateComments(selectedContexts, selectedTone = "neutral", selectedTy
         Logger.log("Generated prompt for type '" + type + "':\n" + prompt);
 
         const payload = {
-          model: "gpt-4.1-mini",
+          // model: "gpt-4.1-mini",
+          model: "gpt-4.1",
           messages: [{ role: "user", content: prompt }]
         };
 

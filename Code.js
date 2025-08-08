@@ -217,7 +217,6 @@ Your comments must follow distinct linguistic patterns based on tone. Use the fo
 - **Very Critical**  
   - Be strategic and candid.  
   - Highlight serious flaws, misalignments, or risks.  
-  - Use urgent, precise language (“undermines”, “misleads”, “must revise”). <!-- urgency remove --!>  
   - Do not soften the feedback — this tone assumes a probe or expert review context.
 
 Your language must visibly shift between tones. If two tones would produce identical wording, revise your approach to make the distinction clearer.

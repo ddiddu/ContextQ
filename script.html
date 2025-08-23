@@ -269,9 +269,7 @@ function generateQuestions(toneOverride, typeOverride) {
     .generateComments(selectedContexts, tone, selectedType, debugging=false);// Pass the context object to the server-side function
 }
 
-// 5️⃣ Step 5: Filter Questions by Tone and Type
-function filterQuestionsByToneAndType() {
-    const selectedTone = window.selectedToneLabel || "neutral"; // 기본값 fallback    
+    const selectedTone = window.selectedToneLabel || "neutral"; // Default fallback    
     const selectedType = window.selectedType || "all"; // Default to "all" if not set
 
     // Combine saved questions and currently generated questions

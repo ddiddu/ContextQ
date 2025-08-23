@@ -1,7 +1,42 @@
 {
   "timeZone": "America/New_York",
-  "dependencies": {
-  },
+  "dependencies": {},
   "exceptionLogging": "STACKDRIVER",
-  "runtimeVersion": "V8"
+  "runtimeVersion": "V8",
+
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/script.container.ui",
+    "https://www.googleapis.com/auth/script.locale",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/presentations.currentonly"
+  ],
+
+  "addOns": {
+    "common": {
+      "name": "Slide Coach (Dev)",
+      "logoUrl": "https://YOUR_PUBLIC_LOGO_URL/logo.png",
+      "layoutProperties": {
+        "primaryColor": "#1A73E8",
+        "secondaryColor": "#185ABC"
+      },
+      "useLocaleFromApp": true,
+      "homepageTrigger": {
+        "runFunction": "buildHomePage",
+        "enabled": true
+      },
+      "universalActions": [
+        { "label": "Help & Docs", "openLink": "https://YOUR_HELP_URL" }
+      ]
+    },
+
+    "slides": {
+      "homepageTrigger": {
+        "runFunction": "buildHomePage",
+        "enabled": true
+      },
+      "onFileScopeGrantedTrigger": {
+        "runFunction": "onFileScopeGranted"
+      }
+    }
+  }
 }

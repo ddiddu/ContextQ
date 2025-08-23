@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <?!= include('head') ?>
+  <?!= include('style'); ?>
+  
+
+  <body>
+    <div style="margin-bottom: 16px;">
+      <div style="font-size: 14px; font-weight: 500;">Describe your presentation.</div>
+      <div style="font-size: 12px; color: #6b7280;">(Purpose, Audience, etc. You can change this later.)</div>
+      
+      <textarea
+        id="presentation-purpose"
+        rows="1"
+        style="
+          width: calc(100% - 32px); /* Matches Save Context button width */
+          resize: none;
+          overflow: hidden;
+          padding: 16px;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          font-family: Roboto, sans-serif;
+          font-size: 16px;
+          /* box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); */
+          margin-top: 8px; /* Add slight margin to separate from headline */
+        "
+        oninput="autoResize(this)"
+      ></textarea>
+    </div>
+
+    <!-- Overlay for the popup -->
+    <div id="popup-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999;" onclick="closeAddContextPopup()"></div>
+
+    <div id="buttons" style="display: flex; justify-content: space-between; gap: 5px; margin-top: -2px;">
+      <md-filled-button id="save-button" onclick="selectTone()" disabled style="margin-bottom: 20px; margin-top: -10px;">Save</md-filled-button>
+    </div>
+
+    <!-- Add this container for the tone selection -->
+    <div id="tone-container"></div>
+
+    <?!= include('render') ?>
+    <?!= include('script'); ?>
+  </body>
+</html>

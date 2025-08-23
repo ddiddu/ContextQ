@@ -1,0 +1,20 @@
+Generate comments of type ${type} in a ${selectedTone} tone. The definition of ${type} is: ${typeDefinition}.
+
+The slide content below includes both visible on-slide text (directly on the slides) and speaker notes (guidance for the presenter, not visible to the audience).
+
+Generate exactly 5 comments for the following presentation context: ${context}, based on the following content: ${fullText}.
+
+For each comment, the "reason" field must provide your step-by-step thought process for why you commented. Number each step as "Step 1:", "Step 2:", etc. Include at least 2 steps and at most 4.
+
+Return only a raw JSON array of 5 objects, in the following format:
+
+[
+  {
+    "slide": 1,
+    "output": "Your comment here",
+    "reason": "step-by-step thought process"
+  },
+  ...
+]
+
+Do NOT include markdown, explanations, labels, or any surrounding text — only return the JSON array. Do not use code block formatting.

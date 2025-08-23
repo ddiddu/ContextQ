@@ -45,18 +45,6 @@ function getApiKeyStatus() {
   };
 }
 
-// function saveApiKey(key) {
-//   PropertiesService.getUserProperties().setProperty('API_KEY', key);
-// }
-
-// function getApiKey() {
-//   const apiKey = PropertiesService.getUserProperties().getProperty('API_KEY');
-//   if (!apiKey) {
-//     throw new Error("API Key not found. Please save it using the Save Settings option.");
-//   }
-//   return apiKey;
-// }
-
 function saveApiKey(apiKey) {
   // Save the API key to the user's properties or another storage
   PropertiesService.getUserProperties().setProperty('API_KEY', apiKey);

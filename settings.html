@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <?!= include('head') ?>
+  <?!= include('style') ?>
+
+  <body>
+    <!-- Settings Tab -->
+    <div id="settings" class="tab-content">
+        <label for="api-key">API Key:</label><br>
+        <input type="text" id="api-key" placeholder="Your OpenAI API Key" style="width: 100%;"><br><br>
+        
+        <label for="model">Model:</label><br>
+        <select id="model" style="width: 100%;">
+            <option value="gpt-4o-mini-2024-07-18">gpt-4o</option>
+            <!-- <option value="gpt-3.5-turbo">gpt-3.5-turbo</option> -->
+            <!-- <option value="gpt-4">gpt-4</option> -->
+        </select><br><br>
+        
+        <button onclick="saveSettings()">Save Settings</button>
+    </div>
+
+    <script>
+      // SETTINGS MANAGEMENT
+      function saveSettings() {
+        const apiKey = document.getElementById('api-key').value;
+        // const model = document.getElementById('model').value;
+        const model = 'gpt-4.1'; // Default model
+
+        if (!apiKey) {
+          alert("Please enter an API key.");
+          return;
+        }
+        // Save the settings using Google Apps Script
+        google.script.run
+          .withSuccessHandler(function() {
+            alert("Settings saved successfully!");
+          })
+          .withFailureHandler(function(error) {
+            alert("Failed to save settings. Please try again.");
+            console.error("Error saving settings:", error);
+          })
+          .saveApiKey(apiKey); // Save the API key
+      }
+    </script>
+  </body>
+</html>

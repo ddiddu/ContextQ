@@ -279,9 +279,17 @@ function filterQuestionsByToneAndType() {
 
     console.log("Filtering questions with tone:", selectedTone, "and type:", selectedType);
 
+    const currentContext = document.getElementById('presentation-purpose').value.trim();
+    const contextUnchanged = currentContext === lastGeneratedContext;
+
+    if (!contextUnchanged) {
+        console.log("🔁 Context has changed. Regenerating questions...");
+        generateQuestions(selectedTone, selectedType);
+        return;
+    }
+
     const filteredQuestions = allQuestions.map(item => {
         return {
-        // persona: item.persona,
         questions: item.questions.filter(q => {
             const toneMatches = q.tone === selectedTone;
             const typeMatches = selectedType === 'all' || q.assistanceLevel === selectedType;
@@ -346,7 +354,6 @@ function validateContextInput() {
 
 // 6️⃣ Step 6: Regenerate Questions
 function regenerateQuestions() {
-    // closeGeneratedQuestionsPopup();
     currentGeneratedQuestions = []; // Clear the current generated questions
     generateQuestions(); // Call the generateQuestions function again
 }

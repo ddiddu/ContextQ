@@ -124,8 +124,8 @@ function selectType() {
     displayQuestions(exampleComments, true, true);
 }
 
-// 4️⃣ Step 4: Type 저장 및 Generate Questions
-// Step 4.1: Type 저장
+// 4️⃣ Step 4: Save Type and Generate Questions
+// Step 4.1: Save Type
 function confirmTypeAndGenerate() {
     // 명시적 방어 코드: selectedComment가 null이면 절대 진행 X
     if (!selectedComment || (Array.isArray(selectedComment) && selectedComment.length === 0)) {

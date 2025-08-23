@@ -314,8 +314,8 @@ function generateQuestions(toneOverride, typeOverride) {
 function updateToneLabel(value) {
     const tone = globalToneMap[value];
 
-    // 선택된 tone을 실제로 어딘가에 저장하거나 필터링에 활용하려면:
-    // 예: 글로벌 변수, hidden input, 또는 직접 질문 필터링 함수 호출
+    // If you want to actually store the selected tone somewhere or use it for filtering:
+    // e.g., global variable, hidden input, or directly call the question filtering function
     // Save both numeric value and string label
     window.selectedToneValue = Number(value);
     window.selectedToneLabel = tone;

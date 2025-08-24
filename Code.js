@@ -7,6 +7,7 @@ function onOpen() {
     .createMenu('AI')
     .addItem('Generate Comments', 'menuItem1')
     .addItem('Show Card', 'menuItem2')
+    .addItem('Save Settings', 'showSettings') // new
     .addToUi();
 }
 
@@ -28,6 +29,27 @@ function menuItem2() {
   SlidesApp.getUi().showSidebar(html);
 }
 
+function showSettings() {
+  const template = HtmlService.createTemplateFromFile('settings');
+  const html = template.evaluate().setTitle('Settings');
+  SlidesApp.getUi().showSidebar(html);
+}
+
+function getApiKeyStatus() {
+  const userProperties = PropertiesService.getUserProperties();
+  const apiKey = userProperties.getProperty('API_KEY');
+  
+  return {
+    hasKey: !!apiKey, // Check if the key exists
+    masked: apiKey ? apiKey.replace(/.(?=.{4})/g, '*') : null // Mask all but the last 4 characters
+  };
+}
+
+function saveApiKey(apiKey) {
+  // Save the API key to the user's properties or another storage
+  PropertiesService.getUserProperties().setProperty('API_KEY', apiKey);
+  return "API Key saved successfully!";
+}
 function getApiKey() {
   const apiKey = PropertiesService.getUserProperties().getProperty('API_KEY');
   if (!apiKey) {

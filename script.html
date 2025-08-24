@@ -145,7 +145,7 @@ function confirmTypeAndGenerate() {
 }
 
 // Step 4.2: Generate Questions
-function generateQuestions(toneOverride, typeOverride) {
+function generateQuestions(toneOverride, typeOverride, extraQuestions = []) {
     // Get the user-provided context from the input field
     const contextInput = document.getElementById('presentation-purpose').value.trim();
     if (!contextInput) {
@@ -227,8 +227,8 @@ function generateQuestions(toneOverride, typeOverride) {
             -->
 
             <div id="buttons" style="display: flex; justify-content: space-between; gap: 5px; margin-top: 5px;">
-                <md-filled-button id="update-button" onclick="filterQuestionsByToneAndType()" disabled>Apply</md-filled-button>
-                <md-filled-button id="regenerate-button" onclick="regenerateQuestions()">Regenerate</md-filled-button>
+                <md-filled-button id="update-button" onclick="filterQuestionsByToneAndType()">Apply</md-filled-button>
+                <!-- <md-filled-button id="regenerate-button" onclick="regenerateQuestions()">Regenerate</md-filled-button> -->
             </div>
 
             <div id="questions-display-main" style="margin-top: 20px;">
@@ -250,11 +250,14 @@ function generateQuestions(toneOverride, typeOverride) {
 
         attachButtonListeners();
 
+        // Merge extraQuestions with the newly generated questions
+        const allQuestions = [...extraQuestions, ...currentQuestions];
+
         // Store the generated questions in the global variable
         currentGeneratedQuestions = [...currentGeneratedQuestions, ...currentQuestions];
 
         // Display the newly generated questions directly below
-        displayQuestions(currentQuestions);
+        displayQuestions(allQuestions);
     })
     .withFailureHandler(function(error) {
         console.log("Failure handler called.");
@@ -266,7 +269,17 @@ function generateQuestions(toneOverride, typeOverride) {
 
         alert("Failed to generate questions. Please try again.");
     })
-    .generateComments(selectedContexts, tone, selectedType, debugging=false);// Pass the context object to the server-side function
+    .generateComments(selectedContexts, tone, type, debugging=false);// Pass the context object to the server-side function
+}
+
+function hasMatchingComments(tone, type) {
+    return currentGeneratedQuestions.some(item => {
+        return item.questions.some(q => {
+            const toneMatches = q.tone === tone;
+            const typeMatches = type === 'all' || q.assistanceLevel === type;
+            return toneMatches && typeMatches; // Match both tone and type
+        });
+    });
 }
 
     const selectedTone = window.selectedToneLabel || "neutral"; // Default fallback    
@@ -277,9 +290,23 @@ function generateQuestions(toneOverride, typeOverride) {
 
     console.log("Filtering questions with tone:", selectedTone, "and type:", selectedType);
 
+    const currentContext = document.getElementById('presentation-purpose').value.trim();
+    const contextUnchanged = currentContext === lastGeneratedContext;
+
+    if (!contextUnchanged) {
+        console.log("🔁 Context has changed. Clearing questions and regenerating...");
+        
+        // Clear existing questions and reset recent comments
+        currentGeneratedQuestions = [];
+        selectedComment = null;
+
+        // Regenerate questions for the new context
+        generateQuestions(selectedTone, selectedType);
+        return;
+    }
+
     const filteredQuestions = allQuestions.map(item => {
         return {
-        // persona: item.persona,
         questions: item.questions.filter(q => {
             const toneMatches = q.tone === selectedTone;
             const typeMatches = selectedType === 'all' || q.assistanceLevel === selectedType;
@@ -296,8 +323,9 @@ function generateQuestions(toneOverride, typeOverride) {
 
     if (!hasLow || !hasHigh) {
         const missingType = !hasLow ? 'low' : 'high';
-        console.log(`🔁 Missing ${missingType} questions — generating just those.`);
-        generateQuestions(selectedTone, missingType); // ← you'll need to allow `selectedType` param
+        console.log(`🔁 Missing ${missingType} comments — generating just those.`);
+        // Pass the filteredQuestions as extraQuestions
+        generateQuestions(selectedTone, missingType, filteredQuestions);
         return;
     }
     }
@@ -344,9 +372,20 @@ function validateContextInput() {
 
 // 6️⃣ Step 6: Regenerate Questions
 function regenerateQuestions() {
-    // closeGeneratedQuestionsPopup();
-    currentGeneratedQuestions = []; // Clear the current generated questions
-    generateQuestions(); // Call the generateQuestions function again
+    const currentTone = window.selectedToneLabel || '';
+    const currentType = window.selectedType || 'all';
+
+    // Filter out only the questions that match the current tone and type
+    currentGeneratedQuestions = currentGeneratedQuestions.filter(item => {
+        return !item.questions.some(q => {
+            const toneMatches = q.tone === currentTone;
+            const typeMatches = currentType === 'all' || q.assistanceLevel === currentType;
+            return toneMatches && typeMatches; // Remove only matching questions
+        });
+    });
+
+    // Regenerate only the selected tone and type
+    generateQuestions(currentTone, currentType);
 }
 
 // External function to validate context input
@@ -427,20 +466,28 @@ function checkButtonStates() {
     const currentTone = window.selectedToneLabel || '';
     const currentType = window.selectedType || '';
 
+    // Check if the context, tone, and type haven't changed
     const contextUnchanged = currentContext === lastGeneratedContext;
     const toneUnchanged = currentTone === lastGeneratedTone;
     const typeUnchanged = currentType === lastGeneratedType;
 
-    // Safely get the buttons (may be null)
-    const updateBtn = document.getElementById('update-button');
+    // Use the external hasMatchingComments function to check for existing comments
+    const hasComments = hasMatchingComments(currentTone, currentType);
+
+    // Additional check for "all" type
+    let hasAllComments = true;
+    if (currentType === 'all') {
+        const hasLow = hasMatchingComments(currentTone, 'low');
+        const hasHigh = hasMatchingComments(currentTone, 'high');
+        hasAllComments = hasLow && hasHigh; // Ensure both low and high are present
+    }
+
+    // Safely get the regenerate button
     const regenerateBtn = document.getElementById('regenerate-button');
 
-    // Only set disabled if the button exists
+    // Enable the regenerate button only if all conditions are met
     if (regenerateBtn) {
-        regenerateBtn.disabled = !(contextUnchanged && toneUnchanged && typeUnchanged);
-    }
-    if (updateBtn) {
-        updateBtn.disabled = (contextUnchanged && toneUnchanged && typeUnchanged);
+        regenerateBtn.disabled = !(contextUnchanged && toneUnchanged && typeUnchanged && hasComments && hasAllComments);
     }
 }
 

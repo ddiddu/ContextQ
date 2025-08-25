@@ -323,6 +323,12 @@ function filterQuestionsByToneAndType() {
     const hasLow = flat.some(q => q.assistanceLevel === 'low');
     const hasHigh = flat.some(q => q.assistanceLevel === 'high');
 
+    if (flat.length === 0) {
+    console.log("🔁 No matching questions found. Generating...");
+    generateQuestions(selectedTone, selectedType);
+    return;
+    }
+    
     if (!hasLow || !hasHigh) {
         const missingType = !hasLow ? 'low' : 'high';
         console.log(`🔁 Missing ${missingType} comments — generating just those.`);
@@ -330,12 +336,6 @@ function filterQuestionsByToneAndType() {
         generateQuestions(selectedTone, missingType, filteredQuestions);
         return;
     }
-    }
-
-    if (flat.length === 0) {
-    console.log("🔁 No matching questions found. Generating...");
-    generateQuestions(selectedTone, selectedType);
-    return;
     }
 
     displayQuestions(filteredQuestions);

@@ -90,6 +90,76 @@ function getSlideContent() {
   return structuredSlides;
 }
 
+// === NEW: 슬라이드 썸네일 뽑기 (PNG, base64) ===
+function getSlideThumbnails(limit = 12, size = 'LARGE') {
+  const presId = SlidesApp.getActivePresentation().getId();
+  const slides = SlidesApp.getActivePresentation().getSlides();
+  const thumbs = [];
+
+  const n = Math.min(limit, slides.length); // 과금/지연 방지: 최대 limit장
+  for (let i = 0; i < n; i++) {
+    const slide = slides[i];
+    const pageId = slide.getObjectId();
+
+    const res = Slides.Presentations.Pages.getThumbnail(
+      presId,
+      pageId,
+      {
+        "thumbnailProperties.mimeType": "PNG",
+        "thumbnailProperties.thumbnailSize": "LARGE" // SMALL | MEDIUM | LARGE
+      }
+    );
+    
+    const url = res.contentUrl;                         // signed URL
+    const blob = UrlFetchApp.fetch(url).getBlob();      // PNG
+    const b64  = Utilities.base64Encode(blob.getBytes());
+    thumbs.push({ slide: i + 1, dataUrl: 'data:image/png;base64,' + b64 });
+  }
+  return thumbs; // [{slide, dataUrl}]
+}
+
+// === NEW: 텍스트 + 이미지 동시 전송 ===
+function callVisionLLM(fullText, thumbs, tone, type) {
+  const prompt = fillPromptTemplate(rawPromptTemplate, {
+    fullText,
+    context: { context: '(자동 수집)' },
+    selectedTone: tone,
+    type,
+    typeDefinition: (typeof typeDefinitions !== 'undefined' ? typeDefinitions[type] : '') || ""
+  });
+
+  const sample = thumbs.slice(0, 6); // 과금/지연 대비
+
+  const content = [
+    { type: "text", text: prompt },
+    ...sample.map(t => ({
+      type: "image_url",
+      image_url: { url: t.dataUrl } // data:image/png;base64,.... OK
+    }))
+  ];
+
+  const payload = {
+    model: "gpt-4.1", // 비전 지원
+    messages: [{ role: "user", content }]
+  };
+
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'Authorization': `Bearer ${getApiKey()}` },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', options);
+  const json = JSON.parse(response.getContentText());
+  if (!json.choices?.length) {
+    if (json.error) throw new Error("OpenAI error: " + JSON.stringify(json.error));
+    throw new Error("No choices in response: " + response.getContentText());
+  }
+  return json.choices[0].message.content; // prompt.html이 JSON 배열만 반환하도록 강제
+}
+
 function getTypeDefinitions() {
   const content = HtmlService.createHtmlOutputFromFile('promptType').getContent();
   try {
@@ -118,41 +188,39 @@ function fillPromptTemplate(template, replacements) {
     .replaceAll('${typeDefinition}', replacements.typeDefinition);
 }
 
+// === REPLACE: 기존 generateComments 전체 교체 ===
 function generateComments(selectedContexts, selectedTone = "neutral", selectedType = "all", debugging = false) {
-  Logger.log("generateComments function called with contexts: " + JSON.stringify(selectedContexts));
-  Logger.log("Selected tone: " + selectedTone);
-  Logger.log("Selected type: " + selectedType);
+  Logger.log("generateComments called with: " + JSON.stringify({ selectedContexts, selectedTone, selectedType }));
 
   if (debugging) {
-    const sampleComments = [{
+    return [{
       questions: [{
         slide: 1,
-        text: "Sample text from slide 1",
+        text: "debug",
         question: "What is the main point of this slide?",
-        reason: "The slide content is vague and could benefit from clarification.",
+        reason: "debug",
         type: "reflective",
         tone: "neutral",
         assistanceLevel: "low"
       }]
     }];
-    return sampleComments;
   }
 
   if (!Array.isArray(selectedContexts) || selectedContexts.length === 0) {
-    Logger.log("Error: selectedContexts is not a valid array or is empty.");
+    Logger.log("Error: selectedContexts invalid/empty");
     return [];
   }
 
-  const slideContent = getSlideContent(); // [{slide: 1, content: "..."}]
-  // const fullText = slideContent.map(s => `Slide ${s.slide}:\n${s.content}`).join("\n\n");
-
+  // 1) 텍스트/노트 수집 (기존)
+  const slideContent = getSlideContent();
   const fullText = slideContent.map(s => {
     const contentPart = `Slide ${s.slide} (Visible Text):\n${s.content}`;
-    const notesPart = s.notes ? `Slide ${s.slide} (Speaker Notes):\n${s.notes}` : '';
+    const notesPart   = s.notes ? `Slide ${s.slide} (Speaker Notes):\n${s.notes}` : '';
     return [contentPart, notesPart].filter(Boolean).join("\n\n");
   }).join("\n\n");
 
-  const rawPromptTemplate = HtmlService.createHtmlOutputFromFile('prompt').getContent();
+  // 2) 이미지 썸네일 수집 (NEW)
+  const thumbs = getSlideThumbnails(12, 'LARGE'); // 필요시 limit 조정
 
   const allQuestions = selectedContexts.map(context => {
     const typesToGenerate = selectedType === "all"
@@ -163,63 +231,47 @@ function generateComments(selectedContexts, selectedTone = "neutral", selectedTy
 
     for (const type of typesToGenerate) {
       try {
-        const prompt = fillPromptTemplate(rawPromptTemplate, {
-          fullText,
-          context,
-          selectedTone,
-          type,
-          typeDefinition: typeDefinitions[type] || ""
-        });
+        let content;
 
-        Logger.log("Generated prompt for type '" + type + "':\n" + prompt);
+        if (thumbs.length > 0) {
+          // ✅ 텍스트+이미지 동시 경로
+          content = callVisionLLM(fullText, thumbs, selectedTone, type);
+        } else {
+          // ↩︎ Fallback: 텍스트-only (현재 코드 경로)
+          const prompt = fillPromptTemplate(rawPromptTemplate, {
+            fullText,
+            context,
+            selectedTone,
+            type,
+            typeDefinition: (typeof typeDefinitions !== 'undefined' ? typeDefinitions[type] : '') || ""
+          });
 
-        const payload = {
-          // model: "gpt-4.1-mini",
-          model: "gpt-4.1",
-          messages: [{ role: "user", content: prompt }]
-        };
+          const payload = {
+            model: "gpt-4.1",
+            messages: [{ role: "user", content: prompt }]
+          };
 
-        const options = {
-          method: 'post',
-          contentType: 'application/json',
-          headers: {
-            'Authorization': `Bearer ${getApiKey()}`
-          },
-          payload: JSON.stringify(payload),
-          muteHttpExceptions: true
-        };
+          const options = {
+            method: 'post',
+            contentType: 'application/json',
+            headers: { 'Authorization': `Bearer ${getApiKey()}` },
+            payload: JSON.stringify(payload),
+            muteHttpExceptions: true
+          };
 
-        const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', options);
-        const responseText = response.getContentText();
+          const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', options);
+          const responseText = response.getContentText();
+          const responseJson = JSON.parse(responseText);
 
-        Logger.log("Raw API response:\n" + responseText);
-
-        let responseJson;
-        try {
-          responseJson = JSON.parse(responseText);
-        } catch (e) {
-          throw new Error("❌ Failed to parse API response as JSON:\n" + responseText);
-        }
-
-        if (!responseJson.choices || !Array.isArray(responseJson.choices) || responseJson.choices.length === 0) {
-          if (responseJson.error) {
-            throw new Error("❌ OpenAI API error: " + JSON.stringify(responseJson.error));
-          } else {
-            throw new Error("❌ API response missing 'choices':\n" + responseText);
+          if (!responseJson.choices || !responseJson.choices.length) {
+            if (responseJson.error) throw new Error("OpenAI error: " + JSON.stringify(responseJson.error));
+            throw new Error("No choices in response: " + responseText);
           }
+          content = responseJson.choices[0].message.content;
         }
 
-        const content = responseJson.choices[0].message.content;
-        Logger.log("✅ Parsed model output:\n" + content);
-
-        let outputs;
-        try {
-          outputs = JSON.parse(content.trim());
-        } catch (e) {
-          Logger.log("❌ Failed to parse model output as JSON:\n" + content);
-          throw new Error("Failed to parse model output: " + e.message);
-        }
-
+        // 공통 파싱 (prompt.html: JSON 배열만)
+        const outputs = JSON.parse(content.trim());
         const formatted = outputs.map(o => ({
           slide: o.slide,
           question: o.output,
@@ -236,9 +288,7 @@ function generateComments(selectedContexts, selectedTone = "neutral", selectedTy
       }
     }
 
-    return {
-      questions: questionsByType
-    };
+    return { questions: questionsByType };
   });
 
   return allQuestions;

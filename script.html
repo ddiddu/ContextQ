@@ -128,10 +128,10 @@ function selectType() {
 // Step 4.1: Type 저장
 function confirmTypeAndGenerate() {
     // 명시적 방어 코드: selectedComment가 null이면 절대 진행 X
-    if (!selectedComment || (Array.isArray(selectedComment) && selectedComment.length === 0)) {
-        alert("Please select a comment type before continuing.");
-        return;
-    }
+    // if (!selectedComment || (Array.isArray(selectedComment) && selectedComment.length === 0)) {
+    //     alert("Please select a comment type before continuing.");
+    //     return;
+    // }
 
     // 아래부터는 조건 만족했을 때만 실행
     selectedTypes = selectedComment;
@@ -315,27 +315,26 @@ function filterQuestionsByToneAndType() {
             return toneMatches && typeMatches; // Match both tone and type
         })
         };
-    }).filter(item => item.questions.length > 0); // Remove personas with no matching questions
+    }).filter(item => item.questions.length > 0); 
 
     const flat = filteredQuestions.flatMap(p => p.questions);
-
-    if (selectedType === 'all') {
     const hasLow = flat.some(q => q.assistanceLevel === 'low');
     const hasHigh = flat.some(q => q.assistanceLevel === 'high');
 
-    if (flat.length === 0) {
-    console.log("🔁 No matching questions found. Generating...");
-    generateQuestions(selectedTone, selectedType);
-    return;
+    if (selectedType === 'all') {
+        if (flat.length === 0) {
+            console.log("🔁 No matching questions found. Generating...");
+            generateQuestions(selectedTone, selectedType);
+            return;
+        }
     }
-    
+
     if (!hasLow || !hasHigh) {
         const missingType = !hasLow ? 'low' : 'high';
         console.log(`🔁 Missing ${missingType} comments — generating just those.`);
         // Pass the filteredQuestions as extraQuestions
         generateQuestions(selectedTone, missingType, filteredQuestions);
         return;
-    }
     }
 
     displayQuestions(filteredQuestions);
@@ -349,16 +348,11 @@ function updateToneLabel(value) {
     // Save both numeric value and string label
     window.selectedToneValue = Number(value);
     window.selectedToneLabel = tone;
-
-    // filterQuestionsByToneAndType(); // 이 함수에서 window.selectedTone 활용 가능
 }
 
 function updateTypeLabel(value) {
     // Update the selected type globally
     window.selectedType = value;
-
-    // Call the function to filter questions based on the selected tone and type
-    // filterQuestionsByToneAndType();
 }
 
 // External function to validate context input

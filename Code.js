@@ -4,9 +4,9 @@ function include(filename) {
 
 function onOpen() {
   SlidesApp.getUi()
-    .createMenu('AI')
+    .createMenu('Comments')
     .addItem('Generate Comments', 'menuItem1')
-    .addItem('Show Card', 'menuItem2')
+    // .addItem('Show Card', 'menuItem2') // debugging
     .addItem('Save Settings', 'showSettings') // new
     .addToUi();
 }
@@ -19,7 +19,7 @@ function doGet() {
 
 function menuItem1() {
   const template = HtmlService.createTemplateFromFile('index');
-  const html = template.evaluate().setTitle('Let’s help you prepare for presentation.');
+  const html = template.evaluate().setTitle('AI Comments');
   SlidesApp.getUi().showSidebar(html);
 }
 
@@ -115,18 +115,22 @@ function getSlideThumbnails(limit = 12, size = 'LARGE') {
     const b64  = Utilities.base64Encode(blob.getBytes());
     thumbs.push({ slide: i + 1, dataUrl: 'data:image/png;base64,' + b64 });
   }
+
+  Logger.log(`Generated ${thumbs.length} thumbnails (limit ${limit}):`);
   return thumbs; // [{slide, dataUrl}]
 }
 
 // === NEW: 텍스트 + 이미지 동시 전송 ===
-function callVisionLLM(fullText, thumbs, tone, type) {
+function callVisionLLM(fullText, thumbs, tone, type, context) {
   const prompt = fillPromptTemplate(rawPromptTemplate, {
     fullText,
-    context: { context: '(자동 수집)' },
+    context,
     selectedTone: tone,
     type,
     typeDefinition: (typeof typeDefinitions !== 'undefined' ? typeDefinitions[type] : '') || ""
   });
+
+  Logger.log("Generated Prompt: " + prompt); // Log the prompt
 
   const sample = thumbs.slice(0, 6); // 과금/지연 대비
 
@@ -157,7 +161,11 @@ function callVisionLLM(fullText, thumbs, tone, type) {
     if (json.error) throw new Error("OpenAI error: " + JSON.stringify(json.error));
     throw new Error("No choices in response: " + response.getContentText());
   }
-  return json.choices[0].message.content; // prompt.html이 JSON 배열만 반환하도록 강제
+
+  const output = json.choices[0].message.content;
+  Logger.log("LLM Response: " + output); // Log the LLM response
+
+  return output; // prompt.html이 JSON 배열만 반환하도록 강제
 }
 
 function getTypeDefinitions() {
@@ -175,14 +183,15 @@ const typeDefinitions = getTypeDefinitions();
 function fillPromptTemplate(template, replacements) {
   const toneMap = {
     "very positive": "very optimistic",
-    "positive": "optimistic"
+    "positive": "optimistic",
+    // "very critical": "very harsh",
+    // "critical": "harsh",
   };
   const mappedTone = toneMap[replacements.selectedTone] || replacements.selectedTone;
 
   return template
     .replaceAll('${fullText}', replacements.fullText)
-    .replaceAll('${context}', replacements.context.context)
-    // .replaceAll('${selectedTone}', replacements.selectedTone)
+    .replaceAll('${context}', typeof replacements.context === 'object' ? replacements.context.context : replacements.context)
     .replaceAll('${selectedTone}', mappedTone)
     .replaceAll('${type}', replacements.type)
     .replaceAll('${typeDefinition}', replacements.typeDefinition);
@@ -223,6 +232,8 @@ function generateComments(selectedContexts, selectedTone = "neutral", selectedTy
   const thumbs = getSlideThumbnails(12, 'LARGE'); // 필요시 limit 조정
 
   const allQuestions = selectedContexts.map(context => {
+    const contextString = typeof context === 'object' ? context.context : context;
+
     const typesToGenerate = selectedType === "all"
       ? ["reflective", "feedback"]
       : [selectedType === "low" ? "reflective" : "feedback"];
@@ -235,12 +246,12 @@ function generateComments(selectedContexts, selectedTone = "neutral", selectedTy
 
         if (thumbs.length > 0) {
           // ✅ 텍스트+이미지 동시 경로
-          content = callVisionLLM(fullText, thumbs, selectedTone, type);
+          content = callVisionLLM(fullText, thumbs, selectedTone, type, contextString); // Pass contextString here
         } else {
           // ↩︎ Fallback: 텍스트-only (현재 코드 경로)
           const prompt = fillPromptTemplate(rawPromptTemplate, {
             fullText,
-            context,
+            context: contextString, // Pass contextString here
             selectedTone,
             type,
             typeDefinition: (typeof typeDefinitions !== 'undefined' ? typeDefinitions[type] : '') || ""

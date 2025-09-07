@@ -307,6 +307,7 @@ function filterQuestionsByToneAndType() {
         return;
     }
 
+    // Filter questions based on selected tone and type
     const filteredQuestions = allQuestions.map(item => {
         return {
         questions: item.questions.filter(q => {
@@ -327,13 +328,25 @@ function filterQuestionsByToneAndType() {
             generateQuestions(selectedTone, selectedType);
             return;
         }
+
+        if (!hasLow || !hasHigh) {
+            const missingType = !hasLow ? 'low' : 'high';
+            console.log(`🔁 Missing ${missingType} comments — generating just those.`);
+            // Pass the filteredQuestions as extraQuestions
+            generateQuestions(selectedTone, missingType, filteredQuestions);
+            return;
+        }
+    }
+    
+    if (!hasLow && selectedType === 'low') {
+        console.log("🔁 No matching low assistanceLevel questions found. Generating...");
+        generateQuestions(selectedTone, 'low');
+        return;
     }
 
-    if (!hasLow || !hasHigh) {
-        const missingType = !hasLow ? 'low' : 'high';
-        console.log(`🔁 Missing ${missingType} comments — generating just those.`);
-        // Pass the filteredQuestions as extraQuestions
-        generateQuestions(selectedTone, missingType, filteredQuestions);
+    if (!hasHigh && selectedType === 'high') {
+        console.log("🔁 No matching high assistanceLevel questions found. Generating...");
+        generateQuestions(selectedTone, 'high');
         return;
     }
 

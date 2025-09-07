@@ -122,7 +122,7 @@ function getSlideThumbnails(limit = 12, size = 'LARGE') {
 
 // === NEW: 텍스트 + 이미지 동시 전송 ===
 function callVisionLLM(fullText, thumbs, tone, type, context) {
-  const prompt = fillPromptTemplate(rawPromptTemplate, {
+  const prompt = fillPromptTemplate(rawPromptUser, {
     fullText,
     context,
     selectedTone: tone,
@@ -130,11 +130,11 @@ function callVisionLLM(fullText, thumbs, tone, type, context) {
     typeDefinition: (typeof typeDefinitions !== 'undefined' ? typeDefinitions[type] : '') || ""
   });
 
-  Logger.log("Generated Prompt: " + prompt); // Log the prompt
+  Logger.log("Generated prompt: " + prompt);
 
   const sample = thumbs.slice(0, 6); // 과금/지연 대비
 
-  const content = [
+  const promptUser = [
     { type: "text", text: prompt },
     ...sample.map(t => ({
       type: "image_url",
@@ -142,10 +142,14 @@ function callVisionLLM(fullText, thumbs, tone, type, context) {
     }))
   ];
 
+  Logger.log("Prompt to LLM (text + images): " + JSON.stringify(promptUser, null, 2)); // Log the full prompt
+
   const payload = {
     model: "gpt-4.1", // 비전 지원
-    messages: [{ role: "user", content }]
+    messages: [{ role: "system", content: rawPromptSystem }, { role: "user", content: JSON.stringify(promptUser) }]
   };
+
+  Logger.log("Payload: " + JSON.stringify(payload, null, 2));
 
   const options = {
     method: 'post',
@@ -177,7 +181,8 @@ function getTypeDefinitions() {
   }
 }
 
-const rawPromptTemplate = HtmlService.createHtmlOutputFromFile('prompt').getContent();
+const rawPromptUser = HtmlService.createHtmlOutputFromFile('promptUser').getContent();
+const rawPromptSystem = HtmlService.createHtmlOutputFromFile('promptSystem').getContent();
 const typeDefinitions = getTypeDefinitions();
 
 function fillPromptTemplate(template, replacements) {
@@ -244,42 +249,8 @@ function generateComments(selectedContexts, selectedTone = "neutral", selectedTy
       try {
         let content;
 
-        if (thumbs.length > 0) {
-          // ✅ 텍스트+이미지 동시 경로
-          content = callVisionLLM(fullText, thumbs, selectedTone, type, contextString); // Pass contextString here
-        } else {
-          // ↩︎ Fallback: 텍스트-only (현재 코드 경로)
-          const prompt = fillPromptTemplate(rawPromptTemplate, {
-            fullText,
-            context: contextString, // Pass contextString here
-            selectedTone,
-            type,
-            typeDefinition: (typeof typeDefinitions !== 'undefined' ? typeDefinitions[type] : '') || ""
-          });
-
-          const payload = {
-            model: "gpt-4.1",
-            messages: [{ role: "user", content: prompt }]
-          };
-
-          const options = {
-            method: 'post',
-            contentType: 'application/json',
-            headers: { 'Authorization': `Bearer ${getApiKey()}` },
-            payload: JSON.stringify(payload),
-            muteHttpExceptions: true
-          };
-
-          const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', options);
-          const responseText = response.getContentText();
-          const responseJson = JSON.parse(responseText);
-
-          if (!responseJson.choices || !responseJson.choices.length) {
-            if (responseJson.error) throw new Error("OpenAI error: " + JSON.stringify(responseJson.error));
-            throw new Error("No choices in response: " + responseText);
-          }
-          content = responseJson.choices[0].message.content;
-        }
+        // ✅ 텍스트+이미지 동시 경로
+        content = callVisionLLM(fullText, thumbs, selectedTone, type, contextString); // Pass contextString here
 
         // 공통 파싱 (prompt.html: JSON 배열만)
         const outputs = JSON.parse(content.trim());

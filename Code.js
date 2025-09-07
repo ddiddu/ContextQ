@@ -116,7 +116,7 @@ function getSlideThumbnails(limit = 12, size = 'LARGE') {
     thumbs.push({ slide: i + 1, dataUrl: 'data:image/png;base64,' + b64 });
   }
 
-  Logger.log(`Generated ${thumbs.length} thumbnails (limit ${limit}):`);
+  // Logger.log(`Generated ${thumbs.length} thumbnails (limit ${limit}):`);
   return thumbs; // [{slide, dataUrl}]
 }
 
@@ -130,7 +130,7 @@ function callVisionLLM(fullText, thumbs, tone, type, context) {
     typeDefinition: (typeof typeDefinitions !== 'undefined' ? typeDefinitions[type] : '') || ""
   });
 
-  Logger.log("Generated prompt: " + prompt);
+  // Logger.log("Generated prompt: " + prompt);
 
   const sample = thumbs.slice(0, 6); // 과금/지연 대비
 
@@ -142,14 +142,14 @@ function callVisionLLM(fullText, thumbs, tone, type, context) {
     }))
   ];
 
-  Logger.log("Prompt to LLM (text + images): " + JSON.stringify(promptUser, null, 2)); // Log the full prompt
+  // Logger.log("Prompt to LLM (text + images): " + JSON.stringify(promptUser, null, 2)); // Log the full prompt
 
   const payload = {
     model: "gpt-4.1", // 비전 지원
     messages: [{ role: "system", content: rawPromptSystem }, { role: "user", content: JSON.stringify(promptUser) }]
   };
 
-  Logger.log("Payload: " + JSON.stringify(payload, null, 2));
+  // Logger.log("Payload: " + JSON.stringify(payload, null, 2));
 
   const options = {
     method: 'post',
@@ -274,4 +274,16 @@ function generateComments(selectedContexts, selectedTone = "neutral", selectedTy
   });
 
   return allQuestions;
+}
+
+function logToggleExplanation(id, newState) {
+  Logger.log(`Explanation toggled for ID: ${id}, New State: ${newState}`);
+}
+
+function logThumbToggle(id, direction, isActive) {
+  Logger.log(`Thumb toggled: ID: ${id}, Direction: ${direction}, Active: ${isActive}`);
+}
+
+function logCardSelection(id, isSelected, allowMultiple) {
+  Logger.log(`Card toggled: ID: ${id}, Selected: ${isSelected}`);
 }

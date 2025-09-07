@@ -127,13 +127,6 @@ function selectType() {
 // 4️⃣ Step 4: Type 저장 및 Generate Questions
 // Step 4.1: Type 저장
 function confirmTypeAndGenerate() {
-    // 명시적 방어 코드: selectedComment가 null이면 절대 진행 X
-    // if (!selectedComment || (Array.isArray(selectedComment) && selectedComment.length === 0)) {
-    //     alert("Please select a comment type before continuing.");
-    //     return;
-    // }
-
-    // 아래부터는 조건 만족했을 때만 실행
     selectedTypes = selectedComment;
     window.selectedType = "all";
     if (Array.isArray(selectedTypes)) {
@@ -397,8 +390,10 @@ function regenerateQuestions() {
     generateQuestions(currentTone, currentType);
 }
 
-// External function to validate context input
-function toggleCardSelection(cardElement, allowMultiple = false) {
+// Function to handle card selection
+function toggleCardSelection(id, cardElement, allowMultiple = false) {
+    // const cardId = cardElement.id || 'unknown'; // Use 'unknown' if the card has no ID
+
     if (!allowMultiple) {
         const isSelected = cardElement.classList.contains('selected');
         document.querySelectorAll('.card').forEach(card => card.classList.remove('selected'));
@@ -415,6 +410,9 @@ function toggleCardSelection(cardElement, allowMultiple = false) {
             selectedComment = null; // 강제 초기화
             document.getElementById('next-button').disabled = true;
         }
+
+        // Log the action in the backend
+        google.script.run.logCardSelection(id, !isSelected, allowMultiple);
     } else {
         cardElement.classList.toggle('selected');
         const selectedCards = document.querySelectorAll('.card.selected');
@@ -424,10 +422,14 @@ function toggleCardSelection(cardElement, allowMultiple = false) {
         selectedComment = Array.from(selectedCards).map(card =>
             card.querySelector('.card-header').textContent.replace('Option ', '').trim()
         );
+
+        // Log the action in the backend
+        google.script.run.logCardSelection(id, cardElement.classList.contains('selected'), allowMultiple);
     }
 }
 
-function toggleThumb(button, direction) {
+// Function to handle thumb up/down toggles
+function toggleThumb(id, button, direction) {
     const isSelected = button.classList.contains('active');
     
     // Remove active state from both buttons in the same container
@@ -438,16 +440,25 @@ function toggleThumb(button, direction) {
     if (!isSelected) {
         button.classList.add('active');
     }
+
+    // Log the action in the backend
+    // const buttonId = button.id || 'unknown'; // Use 'unknown' if the button has no ID
+    google.script.run.logThumbToggle(id, direction, !isSelected);
 }
 
 // Function to toggle the explanation visibility
 function toggleExplanation(id) {
     const explanationDiv = document.getElementById(id);
     if (explanationDiv) {
-    explanationDiv.style.display = (explanationDiv.style.display === 'none') ? 'block' : 'none';
+        const newState = (explanationDiv.style.display === 'none') ? 'block' : 'none';
+        explanationDiv.style.display = newState;
+
+        // Log the action in the backend
+        google.script.run.logToggleExplanation(id, newState);
     }
 }
 
+// Function to display questions in the specified div
 function displayQuestions(questions, hideDetails = false, allowMultiple = false) {
     const displayId = hideDetails ? 'questions-display' : 'questions-display-main';
     const displayDiv = document.getElementById(displayId);
@@ -500,6 +511,7 @@ function checkButtonStates() {
     }
 }
 
+// Attach event listeners to buttons and inputs
 function attachButtonListeners() {
     // Only attach if these elements exist
     const contextInput = document.getElementById('presentation-purpose');

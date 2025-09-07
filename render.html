@@ -2,20 +2,27 @@
 function displayCard(q, index, hideDetails = false, allowMultiple = false) {
   const explanationId = `exp-${q.assistanceLevel}-${q.slide}-${index}`;
   const label = hideDetails ? 'Option' : 'Slide';
+
+  // Conditionally include the header only if hideDetails is false
+  const headerPart = !hideDetails ? `
+    <p class="card-header"><strong>${label}</strong> ${q.slide}</p>
+  ` : '';
+
+  // Conditionally include the details only if hideDetails is false
   const detailPart = !hideDetails ? `
     <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-      <!-- debugging -->
       <span style="font-size: 12px; color: #6b7280; font-weight: 500;">${q.tone}</span>
       <span style="font-size: 12px; color: #6b7280; font-weight: 500;">
         ${q.assistanceLevel === 'low' ? 'Question' : 'Feedback'}
       </span>
     </div>` : '';
 
+  // Conditionally include actions only if hideDetails is false
   const actionsPart = !hideDetails ? `
     <div class="card-actions">
       <div style="display: flex; align-items: center; margin-left: -10px;">
         <md-text-button class="thinking-toggle-btn" onclick="toggleExplanation('${explanationId}', this)">
-          See why
+          View why
         </md-text-button>
         <md-icon-button class="thumb-button" onclick="toggleThumb('${explanationId}', this, 'up')">
           <md-icon>thumb_up</md-icon>
@@ -30,10 +37,11 @@ function displayCard(q, index, hideDetails = false, allowMultiple = false) {
       <p>${q.reason || 'No reasoning provided.'}</p>
     </div>` : '';
 
+  // Include all parts in the returned HTML
   return `
     <div class="card" data-slide="${q.slide}" onclick="toggleCardSelection('${explanationId}', this, ${allowMultiple})">
       ${detailPart}
-      <p class="card-header"><strong>${label}</strong> ${q.slide}</p>
+      ${headerPart}
       <p class="card-question">${q.question}</p>
       ${actionsPart}
     </div>`;

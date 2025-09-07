@@ -40,6 +40,14 @@ document.getElementById('presentation-purpose').addEventListener('input', functi
     autoResize(this); // 높이 자동 조절
 });
 
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1)); // Random index from 0 to i
+        [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+    }
+    return array;
+}
+
 // 2️⃣ STEP 2: 발표 목적 저장 및 Tone 선택 
 function selectTone() {
     selectedComment = null; // 카드 선택 초기화
@@ -72,11 +80,13 @@ function selectTone() {
 
     // Example comments to display
     const exampleComments = [
-        { questions: [{ slide: "A", question: "These points lack any definition of key terms—both 'AI teammates' and 'mixed-motived tasking' are left ambiguous, making it hard for the audience to follow your argument or understand the significance of the problems." }] },
-        { questions: [{ slide: "B", question: "Consider defining 'mixed-motived tasking' more explicitly, as this concept may not be familiar to all members of your audience." }] },
-        { questions: [{ slide: "C", question: "Fantastic opening! For even greater clarity, perhaps briefly define 'mixed-motive tasking' since that concept is central to your argument and some listeners may be unfamiliar with it." }] }
+        { questions: [{ slide: "A", question: "The slide is too dense, with too much text and information crammed together. Split it into two slides—one for the title and welcome, and another for the study details—to improve legibility and reduce cognitive overload." }] },
+        { questions: [{ slide: "B", question: "Consider splitting this dense slide into two: one as a title and welcome slide, and another presenting the study details. This separation improves readability and helps the audience avoid cognitive overload." }] },
+        { questions: [{ slide: "C", question: "Great start! To make it even clearer, try splitting the first slide into two: one for the title and welcome, and another for the study details. This will relieve the density of the slides therby boost readability and ease the audience’s cognitive load." }] }
     ];
 
+    // Shuffle the example comments
+    const randomizedComments = shuffleArray(exampleComments);
     // Call displayQuestions with hideDetails = true and allowMultiple = false
     displayQuestions(exampleComments, true, false);
 }
@@ -116,10 +126,12 @@ function selectType() {
 
     // Example comments to display
     const exampleComments = [
-        { questions: [{ slide: "A", question: "In what ways do you think the limitations of current social cue-based methods could impact the integrity of cooperative team dynamics with AI teammates?" }] },
-        { questions: [{ slide: "B", question: "Integrate brief summaries or implications for each referenced study to clarify their relevance to your thesis idea." }] }
+        { questions: [{ slide: "A", question: "What types of AI comments are being considered, and what does ‘support’ mean in this context?" }] },
+        { questions: [{ slide: "B", question: "Clarify what types of AI comments are being considered by adding one or two illustrative examples and define what ‘support’ means in this context." }] }
     ];
 
+    // Shuffle the example comments
+    const randomizedComments = shuffleArray(exampleComments);
     // Call displayQuestions with hideDetails = true and allowMultiple = true
     displayQuestions(exampleComments, true, true);
 }
@@ -408,7 +420,7 @@ function toggleCardSelection(id, cardElement, allowMultiple = false) {
                 nextButton.disabled = false;
             }
 
-            selectedComment = cardElement.querySelector('.card-header').textContent.replace('Option ', '').trim();
+            selectedComment = cardElement.dataset.slide; // ex: "A", "B", or "C"
         } else {
             selectedComment = null; // 강제 초기화
             document.getElementById('next-button').disabled = true;
@@ -422,9 +434,7 @@ function toggleCardSelection(id, cardElement, allowMultiple = false) {
         const anySelected = selectedCards.length > 0;
         document.getElementById('next-button').disabled = !anySelected;
 
-        selectedComment = Array.from(selectedCards).map(card =>
-            card.querySelector('.card-header').textContent.replace('Option ', '').trim()
-        );
+        selectedComment = Array.from(selectedCards).map(card => card.dataset.slide);
 
         // Log the action in the backend
         google.script.run.logCardSelection(id, cardElement.classList.contains('selected'), allowMultiple);

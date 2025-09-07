@@ -1,6 +1,6 @@
 <script>
 function displayCard(q, index, hideDetails = false, allowMultiple = false) {
-  const explanationId = `exp-${q.slide}-${index}`;
+  const explanationId = `exp-${q.assistanceLevel}-${q.slide}-${index}`;
   const label = hideDetails ? 'Option' : 'Slide';
   const detailPart = !hideDetails ? `
     <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">

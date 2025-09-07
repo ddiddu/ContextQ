@@ -288,6 +288,9 @@ function filterQuestionsByToneAndType() {
     const currentContext = document.getElementById('presentation-purpose').value.trim();
     const contextUnchanged = currentContext === lastGeneratedContext;
 
+    // Log the filter action in the backend
+    google.script.run.logFilterAction(selectedTone, selectedType, currentContext);
+
     if (!contextUnchanged) {
         console.log("🔁 Context has changed. Clearing questions and regenerating...");
         

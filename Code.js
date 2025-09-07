@@ -227,7 +227,7 @@ function generateComments(selectedContexts, selectedTone = "neutral", selectedTy
   }).join("\n\n");
 
   // 2) 이미지 썸네일 수집 (NEW)
-  const thumbs = getSlideThumbnails(12, 'LARGE'); // 필요시 limit 조정
+  const thumbs = getSlideThumbnails(12, 'LARGE'); // No time difference between LARGE/MEDIUM
 
   const allQuestions = selectedContexts.map(context => {
     const contextString = typeof context === 'object' ? context.context : context;

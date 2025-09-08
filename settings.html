@@ -7,15 +7,7 @@
     <!-- Settings Tab -->
     <div id="settings" class="tab-content">
         <label for="api-key">API Key:</label><br>
-        <input type="text" id="api-key" placeholder="Your OpenAI API Key" style="width: 100%;"><br><br>
-        
-        <label for="model">Model:</label><br>
-        <select id="model" style="width: 100%;">
-            <option value="gpt-4o-mini-2024-07-18">gpt-4o</option>
-            <!-- <option value="gpt-3.5-turbo">gpt-3.5-turbo</option> -->
-            <!-- <option value="gpt-4">gpt-4</option> -->
-        </select><br><br>
-        
+        <input type="text" id="api-key" placeholder="Your API Key" style="width: 100%;"><br><br>
         <button onclick="saveSettings()">Save Settings</button>
     </div>
 
@@ -23,7 +15,6 @@
       // SETTINGS MANAGEMENT
       function saveSettings() {
         const apiKey = document.getElementById('api-key').value;
-        // const model = document.getElementById('model').value;
         const model = 'gpt-4.1'; // Default model
 
         if (!apiKey) {

@@ -40,6 +40,14 @@ document.getElementById('presentation-purpose').addEventListener('input', functi
     autoResize(this); // 높이 자동 조절
 });
 
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1)); // Random index from 0 to i
+        [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+    }
+    return array;
+}
+
 // 2️⃣ STEP 2: 발표 목적 저장 및 Tone 선택 
 function selectTone() {
     selectedComment = null; // 카드 선택 초기화
@@ -60,7 +68,7 @@ function selectTone() {
     container.innerHTML = `
     <div style="margin-bottom: 4px;">
         <div style="font-size: 14px; font-weight: 500;">Select your desired comment tone.</div>
-        <div style="font-size: 12px; color: #6b7280;">(Only one tone can be selected. You can change this later.)</div>
+        <div style="font-size: 12px; color: #6b7280;">(Only one tone can be selected. You can change this at any time.)</div>
     </div>
 
     <div id="questions-display" style="margin-top: 10px;">
@@ -72,13 +80,15 @@ function selectTone() {
 
     // Example comments to display
     const exampleComments = [
-        { questions: [{ slide: "A", question: "These points lack any definition of key terms—both 'AI teammates' and 'mixed-motived tasking' are left ambiguous, making it hard for the audience to follow your argument or understand the significance of the problems." }] },
-        { questions: [{ slide: "B", question: "Consider defining 'mixed-motived tasking' more explicitly, as this concept may not be familiar to all members of your audience." }] },
-        { questions: [{ slide: "C", question: "Fantastic opening! For even greater clarity, perhaps briefly define 'mixed-motive tasking' since that concept is central to your argument and some listeners may be unfamiliar with it." }] }
+        { questions: [{ slide: "A", question: "The slide is too dense, with too much text and information crammed together. Split it into two slides—one for the title and welcome, and another for the study details—to improve legibility and reduce cognitive overload." }] },
+        { questions: [{ slide: "B", question: "Consider splitting this dense slide into two: one as a title and welcome slide, and another presenting the study details. This separation improves readability and helps the audience avoid cognitive overload." }] },
+        { questions: [{ slide: "C", question: "Great start! To make it even clearer, try splitting the first slide into two: one for the title and welcome, and another for the study details. This will relieve the density of the slides, thereby boosting readability and easing the audience’s cognitive load." }] }
     ];
 
+    // Shuffle the example comments
+    const randomizedComments = shuffleArray(exampleComments);
     // Call displayQuestions with hideDetails = true and allowMultiple = false
-    displayQuestions(exampleComments, true, false);
+    displayQuestions(randomizedComments, true, false);
 }
 
 // 3️⃣ STEP 3: Tone 저장 및 Type 선택 
@@ -101,7 +111,7 @@ function selectType() {
     container.innerHTML = `
     <div style="margin-bottom: 4px;">
         <div style="font-size: 14px; font-weight: 500;">Select your desired comment type.</div>
-        <div style="font-size: 12px; color: #6b7280;">(Both types can be selected. You can change this later.)</div>
+        <div style="font-size: 12px; color: #6b7280;">(Both types can be selected. You can change this at any time.)</div>
     </div>
 
     <div id="questions-display" style="margin-top: 10px;">
@@ -116,24 +126,19 @@ function selectType() {
 
     // Example comments to display
     const exampleComments = [
-        { questions: [{ slide: "A", question: "In what ways do you think the limitations of current social cue-based methods could impact the integrity of cooperative team dynamics with AI teammates?" }] },
-        { questions: [{ slide: "B", question: "Integrate brief summaries or implications for each referenced study to clarify their relevance to your thesis idea." }] }
+        { questions: [{ slide: "A", question: "What types of AI comments are being considered, and what does ‘support’ mean in this context?" }] },
+        { questions: [{ slide: "B", question: "Clarify what types of AI comments are being considered by adding one or two illustrative examples and define what ‘support’ means in this context." }] }
     ];
 
+    // Shuffle the example comments
+    const randomizedComments = shuffleArray(exampleComments);
     // Call displayQuestions with hideDetails = true and allowMultiple = true
-    displayQuestions(exampleComments, true, true);
+    displayQuestions(randomizedComments, true, true);
 }
 
 // 4️⃣ Step 4: Save Type and Generate Questions
 // Step 4.1: Save Type
 function confirmTypeAndGenerate() {
-    // 명시적 방어 코드: selectedComment가 null이면 절대 진행 X
-    if (!selectedComment || (Array.isArray(selectedComment) && selectedComment.length === 0)) {
-        alert("Please select a comment type before continuing.");
-        return;
-    }
-
-    // 아래부터는 조건 만족했을 때만 실행
     selectedTypes = selectedComment;
     window.selectedType = "all";
     if (Array.isArray(selectedTypes)) {
@@ -293,6 +298,9 @@ function hasMatchingComments(tone, type) {
     const currentContext = document.getElementById('presentation-purpose').value.trim();
     const contextUnchanged = currentContext === lastGeneratedContext;
 
+    // Log the filter action in the backend
+    google.script.run.logFilterAction(selectedTone, selectedType, currentContext);
+
     if (!contextUnchanged) {
         console.log("🔁 Context has changed. Clearing questions and regenerating...");
         
@@ -305,6 +313,7 @@ function hasMatchingComments(tone, type) {
         return;
     }
 
+    // Filter questions based on selected tone and type
     const filteredQuestions = allQuestions.map(item => {
         return {
         questions: item.questions.filter(q => {
@@ -313,27 +322,38 @@ function hasMatchingComments(tone, type) {
             return toneMatches && typeMatches; // Match both tone and type
         })
         };
-    }).filter(item => item.questions.length > 0); // Remove personas with no matching questions
+    }).filter(item => item.questions.length > 0); 
 
     const flat = filteredQuestions.flatMap(p => p.questions);
-
-    if (selectedType === 'all') {
     const hasLow = flat.some(q => q.assistanceLevel === 'low');
     const hasHigh = flat.some(q => q.assistanceLevel === 'high');
 
-    if (!hasLow || !hasHigh) {
-        const missingType = !hasLow ? 'low' : 'high';
-        console.log(`🔁 Missing ${missingType} comments — generating just those.`);
-        // Pass the filteredQuestions as extraQuestions
-        generateQuestions(selectedTone, missingType, filteredQuestions);
+    if (selectedType === 'all') {
+        if (flat.length === 0) {
+            console.log("🔁 No matching questions found. Generating...");
+            generateQuestions(selectedTone, selectedType);
+            return;
+        }
+
+        if (!hasLow || !hasHigh) {
+            const missingType = !hasLow ? 'low' : 'high';
+            console.log(`🔁 Missing ${missingType} comments — generating just those.`);
+            // Pass the filteredQuestions as extraQuestions
+            generateQuestions(selectedTone, missingType, filteredQuestions);
+            return;
+        }
+    }
+    
+    if (!hasLow && selectedType === 'low') {
+        console.log("🔁 No matching low assistanceLevel questions found. Generating...");
+        generateQuestions(selectedTone, 'low');
         return;
     }
-    }
 
-    if (flat.length === 0) {
-    console.log("🔁 No matching questions found. Generating...");
-    generateQuestions(selectedTone, selectedType);
-    return;
+    if (!hasHigh && selectedType === 'high') {
+        console.log("🔁 No matching high assistanceLevel questions found. Generating...");
+        generateQuestions(selectedTone, 'high');
+        return;
     }
 
     displayQuestions(filteredQuestions);
@@ -347,16 +367,11 @@ function updateToneLabel(value) {
     // Save both numeric value and string label
     window.selectedToneValue = Number(value);
     window.selectedToneLabel = tone;
-
-    // filterQuestionsByToneAndType(); // 이 함수에서 window.selectedTone 활용 가능
 }
 
 function updateTypeLabel(value) {
     // Update the selected type globally
     window.selectedType = value;
-
-    // Call the function to filter questions based on the selected tone and type
-    // filterQuestionsByToneAndType();
 }
 
 // External function to validate context input
@@ -388,8 +403,10 @@ function regenerateQuestions() {
     generateQuestions(currentTone, currentType);
 }
 
-// External function to validate context input
-function toggleCardSelection(cardElement, allowMultiple = false) {
+// Function to handle card selection
+function toggleCardSelection(id, cardElement, allowMultiple = false) {
+    // const cardId = cardElement.id || 'unknown'; // Use 'unknown' if the card has no ID
+
     if (!allowMultiple) {
         const isSelected = cardElement.classList.contains('selected');
         document.querySelectorAll('.card').forEach(card => card.classList.remove('selected'));
@@ -401,24 +418,29 @@ function toggleCardSelection(cardElement, allowMultiple = false) {
                 nextButton.disabled = false;
             }
 
-            selectedComment = cardElement.querySelector('.card-header').textContent.replace('Option ', '').trim();
+            selectedComment = cardElement.dataset.slide; // ex: "A", "B", or "C"
         } else {
             selectedComment = null; // 강제 초기화
             document.getElementById('next-button').disabled = true;
         }
+
+        // Log the action in the backend
+        google.script.run.logCardSelection(id, !isSelected, allowMultiple);
     } else {
         cardElement.classList.toggle('selected');
         const selectedCards = document.querySelectorAll('.card.selected');
         const anySelected = selectedCards.length > 0;
         document.getElementById('next-button').disabled = !anySelected;
 
-        selectedComment = Array.from(selectedCards).map(card =>
-            card.querySelector('.card-header').textContent.replace('Option ', '').trim()
-        );
+        selectedComment = Array.from(selectedCards).map(card => card.dataset.slide);
+
+        // Log the action in the backend
+        google.script.run.logCardSelection(id, cardElement.classList.contains('selected'), allowMultiple);
     }
 }
 
-function toggleThumb(button, direction) {
+// Function to handle thumb up/down toggles
+function toggleThumb(id, button, direction) {
     const isSelected = button.classList.contains('active');
     
     // Remove active state from both buttons in the same container
@@ -429,16 +451,25 @@ function toggleThumb(button, direction) {
     if (!isSelected) {
         button.classList.add('active');
     }
+
+    // Log the action in the backend
+    // const buttonId = button.id || 'unknown'; // Use 'unknown' if the button has no ID
+    google.script.run.logThumbToggle(id, direction, !isSelected);
 }
 
 // Function to toggle the explanation visibility
 function toggleExplanation(id) {
     const explanationDiv = document.getElementById(id);
     if (explanationDiv) {
-    explanationDiv.style.display = (explanationDiv.style.display === 'none') ? 'block' : 'none';
+        const newState = (explanationDiv.style.display === 'none') ? 'block' : 'none';
+        explanationDiv.style.display = newState;
+
+        // Log the action in the backend
+        google.script.run.logToggleExplanation(id, newState);
     }
 }
 
+// Function to display questions in the specified div
 function displayQuestions(questions, hideDetails = false, allowMultiple = false) {
     const displayId = hideDetails ? 'questions-display' : 'questions-display-main';
     const displayDiv = document.getElementById(displayId);
@@ -491,6 +522,7 @@ function checkButtonStates() {
     }
 }
 
+// Attach event listeners to buttons and inputs
 function attachButtonListeners() {
     // Only attach if these elements exist
     const contextInput = document.getElementById('presentation-purpose');

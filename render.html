@@ -14,8 +14,26 @@ function displayCard(q, index, hideDetails = false, allowMultiple = false) {
   const actionsPart = !hideDetails ? `
     <div class="card-actions">
       <div style="display: flex; align-items: center; margin-left: -10px;">
+<<<<<<< Updated upstream
         <md-text-button class="thinking-toggle-btn" onclick="toggleExplanation('${explanationId}', this)">
           Show thinking
+=======
+        <md-text-button 
+          class="thinking-toggle-btn" 
+          onclick="toggleExplanation('${explanationId}', this)" 
+          style="
+          border: 1.5px; 
+          border-radius: 20px; 
+          margin-left: 10px; 
+          margin-right: 10px; 
+          padding: 4px 8px; 
+          color: var(--md-sys-color-primary); 
+          font-weight: 500; 
+          transition: background-color 0.3s;"
+          onmouseover="this.style.backgroundColor='rgba(59, 130, 246, 0.1)';"
+          onmouseout="this.style.backgroundColor='transparent';">
+          See why
+>>>>>>> Stashed changes
         </md-text-button>
         <md-icon-button class="thumb-button" onclick="toggleThumb(this, 'up')">
           <md-icon>thumb_up</md-icon>

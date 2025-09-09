@@ -6,7 +6,11 @@ function onOpen() {
   SlidesApp.getUi()
     .createMenu('AI')
     .addItem('Generate Comments', 'menuItem1')
+<<<<<<< Updated upstream
     .addItem('Show Card', 'menuItem2')
+=======
+    .addItem('Show Card', 'menuItem2') // debugging
+>>>>>>> Stashed changes
     .addItem('Save Settings', 'showSettings') // new
     .addToUi();
 }

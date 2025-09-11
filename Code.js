@@ -69,9 +69,17 @@ function getSlideContent() {
     const shapes = slide.getShapes();
 
     const textItems = shapes
-      .filter(shape => shape.getText && typeof shape.getText === "function")
-      .map(shape => shape.getText().asString().trim())
-      .filter(text => text !== "");
+    .map(shape => {
+      try {
+        if (shape.getText) {
+          return shape.getText().asString().trim();
+        }
+      } catch (e) {
+        // Skip non-text shapes safely
+        return "";
+      }
+    })
+    .filter(text => text && text !== "");  
 
     const speakerNotesObj = slide.getNotesPage().getSpeakerNotesShape();
     let speakerNotes = "";
@@ -90,7 +98,7 @@ function getSlideContent() {
   return structuredSlides;
 }
 
-// === NEW: 슬라이드 썸네일 뽑기 (PNG, base64) ===
+// === UPDATED: 슬라이드 썸네일 뽑기 (signed URLs only) ===
 function getSlideThumbnails(limit = 12, size = 'LARGE') {
   const presId = SlidesApp.getActivePresentation().getId();
   const slides = SlidesApp.getActivePresentation().getSlides();
@@ -106,17 +114,17 @@ function getSlideThumbnails(limit = 12, size = 'LARGE') {
       pageId,
       {
         "thumbnailProperties.mimeType": "PNG",
-        "thumbnailProperties.thumbnailSize": "LARGE" // SMALL | MEDIUM | LARGE
+        "thumbnailProperties.thumbnailSize": size // SMALL | MEDIUM | LARGE
       }
     );
-    
-    const url = res.contentUrl;                         // signed URL
-    const blob = UrlFetchApp.fetch(url).getBlob();      // PNG
-    const b64  = Utilities.base64Encode(blob.getBytes());
-    thumbs.push({ slide: i + 1, dataUrl: 'data:image/png;base64,' + b64 });
+
+    Logger.log(`Slide ${i + 1} thumbnail URL: ${res.contentUrl}`);
+
+    // Instead of base64, just keep the signed contentUrl
+    thumbs.push({ slide: i + 1, url: res.contentUrl });
   }
 
-  return thumbs; // [{slide, dataUrl}]
+  return thumbs; // [{slide, url}]
 }
 
 // === NEW: 텍스트 + 이미지 동시 전송 ===
@@ -227,7 +235,7 @@ function generateComments(selectedContexts, selectedTone = "neutral", selectedTy
   }).join("\n\n");
 
   // 2) 이미지 썸네일 수집 (NEW)
-  const thumbs = getSlideThumbnails(12, 'LARGE'); // No time difference between LARGE/MEDIUM
+  const thumbs = getSlideThumbnails(5, 'LARGE'); // No time difference between LARGE/MEDIUM
 
   const allQuestions = selectedContexts.map(context => {
     const contextString = typeof context === 'object' ? context.context : context;

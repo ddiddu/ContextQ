@@ -471,27 +471,75 @@ function toggleExplanation(id) {
     }
 }
 
+// Interleave by slide so each slide shows Question(s) then Feedback(s)
+function interleaveBySlide(flatQuestions) {
+  if (!Array.isArray(flatQuestions)) return [];
+
+  const order = [];
+  const groups = new Map(); // slideId -> { low: [], high: [] }
+
+  flatQuestions.forEach(q => {
+    const slideId = q.slide ?? q.slideNumber ?? 'Unknown';
+    if (!groups.has(slideId)) {
+      groups.set(slideId, { low: [], high: [] });
+      order.push(slideId);
+    }
+    const bucket = (q.assistanceLevel === 'high') ? 'high' : 'low'; // 'low' => Question, 'high' => Feedback
+    groups.get(slideId)[bucket].push(q);
+  });
+
+  // If slides are numeric, sort numerically; otherwise keep first-appearance order
+  const sortedSlides = [...order].sort((a, b) => {
+    const na = Number(a), nb = Number(b);
+    if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+    return order.indexOf(a) - order.indexOf(b);
+  });
+
+  const out = [];
+  for (const slideId of sortedSlides) {
+    const g = groups.get(slideId);
+    const maxLen = Math.max(g.low.length, g.high.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (g.low[i])  out.push(g.low[i]);   // Question first
+      if (g.high[i]) out.push(g.high[i]);  // then Feedback
+    }
+  }
+  return out;
+}
+
 // Function to display questions in the specified div
 function displayQuestions(questions, hideDetails = false, allowMultiple = false) {
-    const displayId = hideDetails ? 'questions-display' : 'questions-display-main';
-    const displayDiv = document.getElementById(displayId);
-    displayDiv.innerHTML = '';
+  const displayId = hideDetails ? 'questions-display' : 'questions-display-main';
+  const displayDiv = document.getElementById(displayId);
+  displayDiv.innerHTML = '';
 
-    if (!questions || questions.length === 0) {
-        displayDiv.innerHTML = `
-        <div 
-            style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px;
-            padding: 16px; color: #6b7280; font-size: 14px; text-align: center;">
-            Please select a tone and type to see results.
-        </div>`;
-        return;
+  if (!questions || questions.length === 0) {
+    displayDiv.innerHTML = `
+      <div 
+        style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px;
+               padding: 16px; color: #6b7280; font-size: 14px; text-align: center;">
+        Please select a tone and type to see results.
+      </div>`;
+    return;
+  }
+
+  // ✅ Minimal change: when rendering the MAIN list and type===all, interleave per slide
+  let itemsToRender = questions;
+  const selectedType = window.selectedType; // your code already sets this to 'low' | 'high' | 'all'
+
+  if (!hideDetails && (selectedType === 'all' || selectedType == null)) {
+    const flat = questions.flatMap(item => item.questions || []);
+    if (flat.length > 0) {
+      const interleaved = interleaveBySlide(flat);
+      itemsToRender = [{ questions: interleaved }];
     }
+  }
 
-    questions.forEach(item => {
-        item.questions.forEach((q, index) => {
-        displayDiv.innerHTML += displayCard(q, index, hideDetails, allowMultiple);
-        });
+  itemsToRender.forEach(item => {
+    (item.questions || []).forEach((q, index) => {
+      displayDiv.innerHTML += displayCard(q, index, hideDetails, allowMultiple);
     });
+  });
 }
 
 function checkButtonStates() {
